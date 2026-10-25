@@ -11,6 +11,12 @@ enum Type {
 	HELLO = 1, ## {name: String, colour: int}, sent by both sides on connect.
 	PING = 2, ## {t: int}, sender's ticks in msec.
 	PONG = 3, ## {t: int}, echoed from the PING.
+	GAME = 4, ## {n: match number, k: game-defined kind, d: Dictionary}. See RemoteOpponent.
+	PICK = 5, ## {game: String, mode: String}, host only.
+	READY = 6, ## {ready: bool, game: String, mode: String}. Ignored if it's for an older pick.
+	START = 7, ## {seed: int, n: match number, game: String, mode: String}, host only.
+	REMATCH = 8, ## {}, this player wants a rematch.
+	TO_LOBBY = 9, ## {}, both go back to the game picker.
 }
 
 

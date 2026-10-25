@@ -1,0 +1,117 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://games/test_race/test_race.gd" id="1_race"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_target"]
+bg_color = Color(1, 0.84, 0.25, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 36
+corner_radius_top_right = 36
+corner_radius_bottom_right = 36
+corner_radius_bottom_left = 36
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_area"]
+bg_color = Color(0.15, 0.17, 0.25, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="TestRace" type="Node"]
+script = ExtResource("1_race")
+
+[node name="UI" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="ColorRect" parent="UI"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.11, 0.12, 0.18, 1)
+
+[node name="Margin" type="MarginContainer" parent="UI"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Column" type="VBoxContainer" parent="UI/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Bars" type="HBoxContainer" parent="UI/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="Mine" type="VBoxContainer" parent="UI/Margin/Column/Bars"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MyName" type="Label" parent="UI/Margin/Column/Bars/Mine"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+
+[node name="MyBar" type="ProgressBar" parent="UI/Margin/Column/Bars/Mine"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+max_value = 20.0
+step = 1.0
+
+[node name="Theirs" type="VBoxContainer" parent="UI/Margin/Column/Bars"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TheirName" type="Label" parent="UI/Margin/Column/Bars/Theirs"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+horizontal_alignment = 2
+
+[node name="TheirBar" type="ProgressBar" parent="UI/Margin/Column/Bars/Theirs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+max_value = 20.0
+step = 1.0
+fill_mode = 1
+
+[node name="Status" type="Label" parent="UI/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+
+[node name="PlayArea" type="Panel" parent="UI/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_area")
+
+[node name="Target" type="Panel" parent="UI/Margin/Column/PlayArea"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_right = 72.0
+offset_bottom = 72.0
+mouse_default_cursor_shape = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_target")

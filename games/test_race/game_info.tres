@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="GameInfo" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://core/game_info.gd" id="1_info"]
+[ext_resource type="PackedScene" path="res://games/test_race/test_race.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://games/test_race/test_race_bot.gd" id="3_bot"]
+
+[resource]
+script = ExtResource("1_info")
+id = "test_race"
+display_name = "Click Race"
+description = "Dev test game. Click the targets; first to 20 wins."
+scene = ExtResource("2_scene")
+modes = PackedStringArray("Normal")
+bot_script = ExtResource("3_bot")
+hidden = true

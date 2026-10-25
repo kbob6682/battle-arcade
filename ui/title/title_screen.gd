@@ -1,6 +1,6 @@
 extends Control
-## Title screen: pick a name and colour, then host or join a room.
-## For now it also shows the connection log and a ping test once connected.
+## Title screen: pick a name and colour, then host, join or play a bot.
+## Shows the connection log while connecting; Session opens the lobby after.
 
 const LOG_MAX_LINES: int = 200
 const SWATCH_SIZE: Vector2 = Vector2(36, 36)
@@ -18,7 +18,6 @@ var _swatch_group: ButtonGroup = ButtonGroup.new()
 @onready var _room_code_label: Label = %RoomCodeLabel
 @onready var _status_label: Label = %StatusLabel
 @onready var _connected_row: HBoxContainer = %ConnectedRow
-@onready var _ping_button: Button = %PingButton
 @onready var _leave_button: Button = %LeaveButton
 @onready var _log_view: RichTextLabel = %LogView
 
@@ -34,7 +33,7 @@ func _ready() -> void:
 	_code_edit.text_submitted.connect(func(_text: String) -> void: _on_join_pressed())
 	_host_button.pressed.connect(_on_host_pressed)
 	_join_button.pressed.connect(_on_join_pressed)
-	_ping_button.pressed.connect(Net.ping)
+	_bot_button.pressed.connect(_on_bot_pressed)
 	_leave_button.pressed.connect(_on_leave_pressed)
 
 	Net.state_changed.connect(_on_net_state_changed)
@@ -42,10 +41,10 @@ func _ready() -> void:
 	Net.connected.connect(_on_connected)
 	Net.connection_failed.connect(_on_connection_failed)
 	Net.disconnected.connect(_on_disconnected)
-	Net.ping_result.connect(_on_ping_result)
 	Net.log_line.connect(_append_log)
 
-	_status_label.text = ""
+	# e.g. "The other player left." after a session ended.
+	_status_label.text = Session.take_end_message()
 	_room_code_label.text = ""
 	_refresh()
 
@@ -105,6 +104,11 @@ func _on_join_pressed() -> void:
 	Net.join_game(_code_edit.text)
 
 
+func _on_bot_pressed() -> void:
+	if _save_player():
+		Session.begin_bot()
+
+
 func _on_leave_pressed() -> void:
 	Net.leave()
 	_status_label.text = ""
@@ -137,7 +141,7 @@ func _on_net_state_changed(state: int) -> void:
 
 
 func _on_connected(opponent: PlayerInfo) -> void:
-	_status_label.text = "Connected to %s!" % opponent.player_name
+	_status_label.text = "Connected to %s! Opening the lobby..." % opponent.player_name
 	_status_label.add_theme_color_override("font_color", opponent.get_colour())
 
 
@@ -153,11 +157,6 @@ func _show_problem(text: String) -> void:
 	_status_label.remove_theme_color_override("font_color")
 	_status_label.text = text
 	_room_code_label.text = ""
-
-
-func _on_ping_result(rtt_msec: int) -> void:
-	_append_log("Ping: %d ms round trip" % rtt_msec)
-	_status_label.text = "Connected to %s! Ping %d ms" % [Net.opponent.player_name if Net.opponent else "?", rtt_msec]
 
 
 func _append_log(text: String) -> void:
@@ -180,8 +179,7 @@ func _refresh() -> void:
 		swatch.add_theme_stylebox_override("disabled", _swatch_style(colour.darkened(0.35), swatch.button_pressed))
 	_host_button.disabled = not (idle and name_ok)
 	_join_button.disabled = not (idle and name_ok and code_ok)
-	_bot_button.disabled = true # Comes with the lobby flow (step 4).
-	_connected_row.visible = not idle
-	_ping_button.visible = Net.state == Net.State.CONNECTED
+	_bot_button.disabled = not (idle and name_ok)
+	_connected_row.visible = not idle and Net.state != Net.State.CONNECTED
 	if idle:
 		_status_label.remove_theme_color_override("font_color")

@@ -93,8 +93,7 @@ text = "Join Game"
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
-disabled = true
-text = "Play vs Bot (coming soon)"
+text = "Play vs Bot"
 
 [node name="RoomCodeLabel" type="Label" parent="Center/Column"]
 unique_name_in_owner = true
@@ -116,17 +115,11 @@ visible = false
 layout_mode = 2
 alignment = 1
 
-[node name="PingButton" type="Button" parent="Center/Column/ConnectedRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 36)
-layout_mode = 2
-text = "Ping"
-
 [node name="LeaveButton" type="Button" parent="Center/Column/ConnectedRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 36)
 layout_mode = 2
-text = "Leave"
+text = "Cancel"
 
 [node name="LogTitle" type="Label" parent="Center/Column"]
 layout_mode = 2

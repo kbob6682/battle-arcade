@@ -1,0 +1,108 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://ui/match/match.gd" id="1_match"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_results"]
+bg_color = Color(0.08, 0.09, 0.14, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.4, 0.45, 0.6, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 32.0
+content_margin_top = 24.0
+content_margin_right = 32.0
+content_margin_bottom = 24.0
+
+[node name="Match" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_match")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.11, 0.12, 0.18, 1)
+
+[node name="GameHolder" type="Node" parent="."]
+unique_name_in_owner = true
+
+[node name="CountdownTimer" type="Timer" parent="."]
+unique_name_in_owner = true
+
+[node name="Overlay" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="CountdownLabel" type="Label" parent="Overlay"]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 12
+theme_override_font_sizes/font_size = 120
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ResultsCenter" type="CenterContainer" parent="Overlay"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ResultsPanel" type="PanelContainer" parent="Overlay/ResultsCenter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_results")
+
+[node name="Column" type="VBoxContainer" parent="Overlay/ResultsCenter/ResultsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ResultLabel" type="Label" parent="Overlay/ResultsCenter/ResultsPanel/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 44
+horizontal_alignment = 1
+
+[node name="RematchStatus" type="Label" parent="Overlay/ResultsCenter/ResultsPanel/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="RematchButton" type="Button" parent="Overlay/ResultsCenter/ResultsPanel/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Rematch"
+
+[node name="LobbyButton" type="Button" parent="Overlay/ResultsCenter/ResultsPanel/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Pick Another Game"
+
+[node name="LeaveButton" type="Button" parent="Overlay/ResultsCenter/ResultsPanel/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Leave"
