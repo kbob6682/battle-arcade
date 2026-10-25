@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "battle-arcade-signal",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-19",
+  // No account_id here: wrangler takes it from `wrangler login`.
+  "vars": {
+    // Comma-separated web origins allowed to use the Worker. localhost and
+    // 127.0.0.1 on any port are always allowed for local testing.
+    "ALLOWED_ORIGINS": "https://kbob6682.github.io"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  // Free plan: Durable Objects must be SQLite-backed.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+}
