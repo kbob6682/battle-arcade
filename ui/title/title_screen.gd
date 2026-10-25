@@ -175,6 +175,9 @@ func _refresh() -> void:
 	_code_edit.editable = idle
 	for swatch: BaseButton in _swatch_group.get_buttons():
 		swatch.disabled = not idle
+		# Keep the colour visible (dimmed) while locked, with the pick still outlined.
+		var colour: Color = PlayerInfo.COLOURS[swatch.get_index()]
+		swatch.add_theme_stylebox_override("disabled", _swatch_style(colour.darkened(0.35), swatch.button_pressed))
 	_host_button.disabled = not (idle and name_ok)
 	_join_button.disabled = not (idle and name_ok and code_ok)
 	_bot_button.disabled = true # Comes with the lobby flow (step 4).
