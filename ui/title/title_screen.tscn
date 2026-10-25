@@ -1,0 +1,141 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/title/title_screen.gd" id="1_title"]
+
+[node name="TitleScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_title")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.11, 0.12, 0.18, 1)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Column" type="VBoxContainer" parent="Center"]
+custom_minimum_size = Vector2(460, 0)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Center/Column"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 44
+text = "Battle Arcade"
+horizontal_alignment = 1
+
+[node name="NameRow" type="HBoxContainer" parent="Center/Column"]
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="Center/Column/NameRow"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+text = "Name"
+
+[node name="NameEdit" type="LineEdit" parent="Center/Column/NameRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Your player name"
+
+[node name="NameHint" type="Label" parent="Center/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.75, 0.4, 1)
+theme_override_font_sizes/font_size = 13
+horizontal_alignment = 1
+
+[node name="ColourRow" type="HBoxContainer" parent="Center/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+
+[node name="HostButton" type="Button" parent="Center/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Host Game"
+
+[node name="JoinRow" type="HBoxContainer" parent="Center/Column"]
+layout_mode = 2
+
+[node name="CodeEdit" type="LineEdit" parent="Center/Column/JoinRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Room code"
+alignment = 1
+max_length = 5
+
+[node name="JoinButton" type="Button" parent="Center/Column/JoinRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+text = "Join Game"
+
+[node name="BotButton" type="Button" parent="Center/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+disabled = true
+text = "Play vs Bot (coming soon)"
+
+[node name="RoomCodeLabel" type="Label" parent="Center/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Center/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="ConnectedRow" type="HBoxContainer" parent="Center/Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+alignment = 1
+
+[node name="PingButton" type="Button" parent="Center/Column/ConnectedRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 36)
+layout_mode = 2
+text = "Ping"
+
+[node name="LeaveButton" type="Button" parent="Center/Column/ConnectedRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 36)
+layout_mode = 2
+text = "Leave"
+
+[node name="LogTitle" type="Label" parent="Center/Column"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "Connection log"
+
+[node name="LogView" type="RichTextLabel" parent="Center/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+theme_override_font_sizes/normal_font_size = 13
+scroll_following = true

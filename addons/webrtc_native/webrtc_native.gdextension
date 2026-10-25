@@ -1,0 +1,13 @@
+[configuration]
+
+entry_symbol = "webrtc_extension_init"
+compatibility_minimum = 4.3
+
+exclude_tags = ["web", "no-webrtc"]
+
+; webrtc-native 1.2.2-stable (godotengine/webrtc-native). Trimmed to Windows
+; x86_64 only; add other platforms from the release zip if needed.
+[libraries]
+
+windows.debug.x86_64 = "lib/libwebrtc_native.windows.template_debug.x86_64.dll"
+windows.release.x86_64 = "lib/libwebrtc_native.windows.template_release.x86_64.dll"

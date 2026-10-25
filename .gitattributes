@@ -13,3 +13,6 @@
 *.otf binary
 *.woff binary
 *.woff2 binary
+*.dll binary
+*.so binary
+*.dylib binary

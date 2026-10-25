@@ -11,7 +11,16 @@ config_version=5
 [application]
 
 config/name="Battle Arcade"
+run/main_scene="res://ui/title/title_screen.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[autoload]
+
+Net="*res://core/net.gd"
+
+[battle_arcade]
+
+signalling_url="http://127.0.0.1:8787"
 
 [rendering]
 

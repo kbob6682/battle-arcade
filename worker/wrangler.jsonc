@@ -3,6 +3,9 @@
   "name": "battle-arcade-signal",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-19",
+  // Local dev listens on 127.0.0.1 only; the game uses that, not "localhost",
+  // because Godot tries IPv6 (::1) first and doesn't fall back.
+  "dev": { "ip": "127.0.0.1", "port": 8787 },
   // No account_id here: wrangler takes it from `wrangler login`.
   "vars": {
     // Comma-separated web origins allowed to use the Worker. localhost and
