@@ -1,0 +1,24 @@
+# Godot 4
+.godot/
+/android/
+*.translation
+
+# Godot C# (not used, kept for safety)
+.mono/
+data_*/
+mono_crash.*.json
+
+# Export builds
+build/
+
+# Worker / Node
+node_modules/
+.wrangler/
+.dev.vars
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db
