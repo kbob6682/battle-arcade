@@ -28,7 +28,7 @@ const REASONS: Dictionary = {
 	"server_unreachable": "Couldn't reach the game server.",
 	"connection_lost": "Lost the connection to the game server.",
 	"no_such_room": "Room not found. Check the code.",
-	"room_full": "That room is full.",
+	"room_full": "That room is full or its game has already started.",
 	"expired": "The room expired. Host a new game.",
 	"bad_token": "Couldn't join as host.",
 	"bad_version": "Game versions don't match. Refresh the page.",

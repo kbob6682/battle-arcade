@@ -41,10 +41,10 @@ Relayed between players (the Room validates each one and forwards only these fie
 | Code | Reason | When |
 |---|---|---|
 | 4000 | `expired` | The room's 10 minutes are up. |
-| 4001 | `room_full` | That role is already taken (a third player tried to join). |
+| 4001 | `room_full` | That role is taken, or a host and guest have already met in this room (rooms are single-use, even after both sockets close). |
 | 4002 | `bad_message` | Not JSON, an unknown type, a bad field, or the wrong role (e.g. a guest offering). |
 | 4003 | `bad_token` | Wrong host token. |
-| 4004 | `no_such_room` | The code doesn't exist, has expired, or is malformed. |
+| 4004 | `no_such_room` | The code doesn't exist, has expired, or is malformed, or a guest joined while the host isn't connected. |
 | 4005 | `bad_version` | `v` doesn't match the Worker's protocol version. |
 | 4029 | `too_many_messages` | More than 100 messages on one socket. |
 

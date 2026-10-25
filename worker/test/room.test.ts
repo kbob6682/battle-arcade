@@ -75,7 +75,8 @@ describe("room codes", () => {
   });
 
   it("joins case-insensitively", async () => {
-    const { code } = await createRoom();
+    const { code, token } = await createRoom();
+    await connect(code, token);
     const guest = await connect(code.toLowerCase());
     expect(await guest.next()).toEqual({ v, t: "joined", role: "guest" });
   });
@@ -115,13 +116,20 @@ describe("signalling relay", () => {
     expect(await host.next()).toEqual({ v, t: "peer_left" });
   });
 
-  it("lets a new guest join after the first leaves", async () => {
+  it("refuses new players once a pair has met, even after they leave", async () => {
     const { code, host, guest } = await pairUp();
     guest.ws.close(1000, "bye");
-    await host.next();
+    host.ws.close(1000, "bye");
     await guest.closed;
-    const guest2 = await connect(code);
-    expect(await guest2.next()).toEqual({ v, t: "joined", role: "guest" });
+    await host.closed;
+    const late = await connect(code);
+    expect(await late.closed).toEqual({ code: Close.ROOM_FULL, reason: "room_full" });
+  });
+
+  it("refuses a guest when the host isn't in the room", async () => {
+    const { code } = await createRoom();
+    const guest = await connect(code);
+    expect(await guest.closed).toEqual({ code: Close.NO_SUCH_ROOM, reason: "no_such_room" });
   });
 });
 

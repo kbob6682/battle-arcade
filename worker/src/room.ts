@@ -38,7 +38,16 @@ export class Room extends DurableObject<Env> {
     const token = new URL(request.url).searchParams.get("token");
     if (token !== null && token !== hostToken) return rejectWebSocket(Close.BAD_TOKEN, "bad_token");
     const role: Role = token === null ? "guest" : "host";
-    if (this.ctx.getWebSockets(role).length > 0) return rejectWebSocket(Close.ROOM_FULL, "room_full");
+    // Once a host and guest have met, the room is used up: they close their
+    // sockets after connecting peer-to-peer, and nobody else may take a slot.
+    if ((await this.ctx.storage.get<boolean>("paired")) === true || this.ctx.getWebSockets(role).length > 0) {
+      return rejectWebSocket(Close.ROOM_FULL, "room_full");
+    }
+    // Only the host's game holds the token, so a room without its host can't
+    // complete. Tell the guest straight away instead of letting them wait.
+    if (role === "guest" && this.peer(role) === null) {
+      return rejectWebSocket(Close.NO_SUCH_ROOM, "no_such_room");
+    }
 
     const pair = new WebSocketPair();
     const server = pair[1];
@@ -48,6 +57,7 @@ export class Room extends DurableObject<Env> {
 
     const other = this.peer(role);
     if (other !== null) {
+      await this.ctx.storage.put("paired", true);
       send(other, { v: PROTOCOL_VERSION, t: "peer_joined" });
       send(server, { v: PROTOCOL_VERSION, t: "peer_joined" });
     }
