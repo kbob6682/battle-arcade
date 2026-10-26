@@ -1,0 +1,74 @@
+# Exports the Web preset with Godot and publishes it to GitHub Pages.
+# Runs on every push to main, or by hand from the Actions tab.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a newer push cancels an older one still running.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Godot
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot
+          rm godot.zip
+
+      # The full template pack is large; keep only the non-threaded web templates.
+      - name: Cache web export templates
+        id: templates
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-web-templates-${{ env.GODOT_VERSION }}
+
+      - name: Download web export templates
+        if: steps.templates.outputs.cache-hit != 'true'
+        run: |
+          dir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$dir"
+          curl -fsSL -o templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q -j templates.tpz "templates/web_nothreads_*" "templates/version.txt" -d "$dir"
+          rm templates.tpz
+          ls "$dir"
+
+      - name: Export web build
+        run: |
+          mkdir -p build/web
+          ./godot --headless --import --path .
+          ./godot --headless --path . --export-release "Web" build/web/index.html
+          test -f build/web/index.wasm
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

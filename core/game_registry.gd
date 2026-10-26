@@ -17,11 +17,15 @@ static func all_games() -> Array[GameInfo]:
 	return _games
 
 
-## Games for the picker. Hidden (dev-only) games appear in debug builds only.
+## Games for the picker. Hidden (dev-only) games appear in debug builds, and in
+## release builds exported with the "playtest" feature tag.
 static func visible_games() -> Array[GameInfo]:
-	var show_hidden: bool = OS.is_debug_build()
+	return filter_visible(all_games(), OS.is_debug_build() or OS.has_feature("playtest"))
+
+
+static func filter_visible(games: Array[GameInfo], show_hidden: bool) -> Array[GameInfo]:
 	var result: Array[GameInfo] = []
-	for game: GameInfo in all_games():
+	for game: GameInfo in games:
 		if show_hidden or not game.hidden:
 			result.append(game)
 	return result

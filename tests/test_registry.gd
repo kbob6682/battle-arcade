@@ -26,3 +26,14 @@ func test_every_game_is_complete() -> void:
 				check(bot != null and bot.difficulty == level, "%s makes a level %d bot" % [game.id, level])
 				if bot != null:
 					bot.free()
+
+
+func test_hidden_games_only_shown_when_asked() -> void:
+	var shown: GameInfo = GameInfo.new()
+	shown.id = "shown"
+	var secret: GameInfo = GameInfo.new()
+	secret.id = "secret"
+	secret.hidden = true
+	var games: Array[GameInfo] = [shown, secret]
+	check_eq(GameRegistry.filter_visible(games, false).size(), 1, "hidden game left out")
+	check_eq(GameRegistry.filter_visible(games, true).size(), 2, "hidden game shown for playtests")

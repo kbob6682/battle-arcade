@@ -9,7 +9,8 @@ data_*/
 mono_crash.*.json
 
 # Export builds
-build/
+build/*
+!build/.gdignore
 
 # Worker / Node
 node_modules/
