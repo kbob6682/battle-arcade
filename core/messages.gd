@@ -17,6 +17,7 @@ enum Type {
 	START = 7, ## {seed: int, n: match number, game: String, mode: String}, host only.
 	REMATCH = 8, ## {}, this player wants a rematch.
 	TO_LOBBY = 9, ## {}, both go back to the game picker.
+	HEARTBEAT = 10, ## {}, sent every second while connected so silence can be noticed.
 }
 
 

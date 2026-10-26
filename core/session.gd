@@ -14,6 +14,8 @@ const LOBBY_SCENE: String = "res://ui/lobby/lobby.tscn"
 const MATCH_SCENE: String = "res://ui/match/match.tscn"
 ## Time to read "Connected to X!" before the lobby opens.
 const LOBBY_DELAY_SEC: float = 1.0
+## Draws the "Waiting for X..." banner above every screen.
+const BANNER_LAYER: int = 10
 
 var kind: Kind = Kind.NONE
 var is_host: bool = false
@@ -31,12 +33,16 @@ var last_outcome: int = -1
 
 var _end_message: String = ""
 var _session_id: int = 0
+var _banner: PanelContainer
+var _banner_label: Label
 
 
 func _ready() -> void:
+	_build_banner()
 	Net.connected.connect(_on_net_connected)
 	Net.disconnected.connect(_on_net_disconnected)
 	Net.message_received.connect(_on_net_message)
+	Net.link_status_changed.connect(func(_status: LinkWatch.Status) -> void: _refresh_banner())
 
 
 func current_game() -> GameInfo:
@@ -185,6 +191,35 @@ func _enter_lobby() -> void:
 
 # --- Network ----------------------------------------------------------------
 
+## Built in code on a CanvasLayer child, so it survives scene changes and
+## no screen needs to know about it.
+func _build_banner() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = BANNER_LAYER
+	add_child(layer)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.1, 0.1, 0.9)
+	style.set_corner_radius_all(8)
+	style.set_content_margin_all(12)
+	_banner = PanelContainer.new()
+	_banner.add_theme_stylebox_override("panel", style)
+	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 12)
+	_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_banner.hide()
+	layer.add_child(_banner)
+	_banner_label = Label.new()
+	_banner_label.add_theme_color_override("font_color", Color.GOLD)
+	_banner.add_child(_banner_label)
+
+
+func _refresh_banner() -> void:
+	var show_it: bool = kind == Kind.ONLINE and Net.link_status == LinkWatch.Status.WARN
+	if show_it:
+		_banner_label.text = "Waiting for %s... (connection problem)" % opponent_name()
+	_banner.visible = show_it
+
+
 func _on_net_disconnected(reason: String) -> void:
 	if kind != Kind.ONLINE:
 		return
@@ -278,6 +313,7 @@ func _clear() -> void:
 	game_mode = ""
 	_reset_flags()
 	last_outcome = -1
+	_refresh_banner()
 
 
 func _go(scene_path: String) -> void:

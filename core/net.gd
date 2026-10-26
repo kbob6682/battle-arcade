@@ -12,6 +12,8 @@ signal connection_failed(reason: String)
 ## An established link went away. reason is a key for describe().
 signal disconnected(reason: String)
 signal message_received(type: Messages.Type, payload: Dictionary)
+## The other player went quiet (WARN) or was heard from again (OK). See LinkWatch.
+signal link_status_changed(status: LinkWatch.Status)
 signal ping_result(rtt_msec: int)
 ## Human-readable connection events, for the on-screen log.
 signal log_line(text: String)
@@ -19,6 +21,7 @@ signal log_line(text: String)
 enum State { IDLE, CREATING, WAITING, JOINING, CONNECTING, CONNECTED }
 
 const CONNECT_TIMEOUT_SEC: float = 15.0
+const HEARTBEAT_INTERVAL_SEC: float = 1.0
 const HOST_ID: int = 1
 const GUEST_ID: int = 2
 const ICE_SERVERS: Array = [
@@ -37,6 +40,7 @@ const REASONS: Dictionary = {
 	"timeout": "Couldn't connect to the other player (timed out).",
 	"ice_failed": "Couldn't connect to the other player (network blocked).",
 	"opponent_left": "The other player left.",
+	"link_lost": "Lost the connection to the other player.",
 }
 
 var state: State = State.IDLE
@@ -52,6 +56,9 @@ var _rtc_peer: WebRTCMultiplayerPeer = null
 var _connection: WebRTCPeerConnection = null
 var _timeout: Timer
 var _last_rtc_state: int = -1
+var _watch: LinkWatch = LinkWatch.new()
+var link_status: LinkWatch.Status = LinkWatch.Status.OK
+var _since_heartbeat_sec: float = 0.0
 
 
 func _ready() -> void:
@@ -123,8 +130,31 @@ func ping() -> void:
 	send_message(Messages.Type.PING, {"t": Time.get_ticks_msec()})
 
 
-func _process(_delta: float) -> void:
-	# The scene tree polls the multiplayer peer each frame; this only logs changes.
+func _process(delta: float) -> void:
+	# The scene tree polls the multiplayer peer (delivering packets) before
+	# _process runs, so anything that arrived this frame has already counted.
+	if state == State.CONNECTED:
+		_tick_heartbeat(delta)
+	_watch_rtc_state()
+
+
+## Sends a heartbeat each second and checks how long the other side has been quiet.
+func _tick_heartbeat(delta: float) -> void:
+	_since_heartbeat_sec += delta
+	if _since_heartbeat_sec >= HEARTBEAT_INTERVAL_SEC:
+		_since_heartbeat_sec = 0.0
+		send_message(Messages.Type.HEARTBEAT)
+	var status: LinkWatch.Status = _watch.status(Time.get_ticks_msec())
+	if status == LinkWatch.Status.LOST:
+		_log("Nothing heard from the other player; giving up")
+		_reset()
+		disconnected.emit("link_lost")
+		return
+	_set_link_status(status)
+
+
+func _watch_rtc_state() -> void:
+	# Only logs changes, and fails a connection attempt if ICE fails.
 	if _connection == null:
 		return
 	var rtc_state: int = _connection.get_connection_state()
@@ -225,8 +255,10 @@ func _on_ice_candidate_created(media: String, index: int, candidate: String) -> 
 
 func _on_peer_connected(_id: int) -> void:
 	_log("Peer-to-peer link is up")
-	_timeout.stop()
+	# The connect timeout keeps running until the opponent's HELLO arrives.
 	_signalling.close()
+	_watch.heard(Time.get_ticks_msec())
+	_since_heartbeat_sec = 0.0
 	_set_state(State.CONNECTED)
 	send_message(Messages.Type.HELLO, local_player.to_dict())
 
@@ -239,6 +271,8 @@ func _on_peer_disconnected(_id: int) -> void:
 
 
 func _on_peer_packet(_id: int, packet: PackedByteArray) -> void:
+	_watch.heard(Time.get_ticks_msec())
+	_set_link_status(LinkWatch.Status.OK)
 	var msg: Dictionary = Messages.decode(packet)
 	if msg.has("error"):
 		_log("Dropped packet: " + str(msg["error"]))
@@ -249,15 +283,20 @@ func _on_peer_packet(_id: int, packet: PackedByteArray) -> void:
 	var payload: Dictionary = msg["payload"]
 	match msg["type"]:
 		Messages.Type.HELLO:
+			if opponent != null:
+				return
 			var info: PlayerInfo = PlayerInfo.from_dict(payload)
 			if info == null:
 				_log("Bad HELLO from opponent")
 				return
+			_timeout.stop()
 			opponent = info
 			_log("Opponent is " + info.player_name)
 			connected.emit(info)
 		Messages.Type.PING:
 			send_message(Messages.Type.PONG, payload)
+		Messages.Type.HEARTBEAT:
+			pass
 		Messages.Type.PONG:
 			if typeof(payload.get("t")) == TYPE_INT:
 				ping_result.emit(Time.get_ticks_msec() - int(payload["t"]))
@@ -266,7 +305,8 @@ func _on_peer_packet(_id: int, packet: PackedByteArray) -> void:
 
 
 func _on_timeout() -> void:
-	if state == State.CONNECTING:
+	# CONNECTED without an opponent means the link came up but HELLO never arrived.
+	if state == State.CONNECTING or (state == State.CONNECTED and opponent == null):
 		_fail("timeout")
 
 
@@ -288,6 +328,7 @@ func _reset() -> void:
 	_rtc_peer = null
 	_connection = null
 	_last_rtc_state = -1
+	_set_link_status(LinkWatch.Status.OK)
 	opponent = null
 	room_code = ""
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
@@ -300,6 +341,14 @@ func _set_state(new_state: State) -> void:
 		return
 	state = new_state
 	state_changed.emit(state)
+
+
+func _set_link_status(status: LinkWatch.Status) -> void:
+	if status == link_status:
+		return
+	link_status = status
+	_log("Link: " + ("waiting for the other player" if status == LinkWatch.Status.WARN else "ok"))
+	link_status_changed.emit(status)
 
 
 func _log(text: String) -> void:
