@@ -61,7 +61,7 @@ func _ready() -> void:
 	_scene_mp.peer_packet.connect(_on_peer_packet)
 
 	_signalling = SignallingClient.new()
-	_signalling.base_url = str(ProjectSettings.get_setting("battle_arcade/signalling_url", "http://127.0.0.1:8787"))
+	_signalling.base_url = signalling_url()
 	add_child(_signalling)
 	_signalling.room_created.connect(_on_room_created)
 	_signalling.joined.connect(_on_joined)
@@ -82,6 +82,14 @@ func _ready() -> void:
 
 static func describe(reason: String) -> String:
 	return REASONS.get(reason, "Connection error (%s)." % reason)
+
+
+## The signalling Worker's base URL. Uses get_setting_with_override so feature
+## tag overrides apply (signalling_url.release points at the deployed Worker);
+## plain get_setting ignores them.
+static func signalling_url() -> String:
+	var url: Variant = ProjectSettings.get_setting_with_override("battle_arcade/signalling_url")
+	return "http://127.0.0.1:8787" if url == null else str(url)
 
 
 func host_game() -> void:
