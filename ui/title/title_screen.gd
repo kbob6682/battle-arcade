@@ -4,9 +4,13 @@ extends Control
 
 const LOG_MAX_LINES: int = 200
 const SWATCH_SIZE: Vector2 = Vector2(36, 36)
+## How long "Connecting..." shows before the hint about switched tabs.
+const SLOW_HINT_SEC: float = 5.0
 
 var _player: PlayerInfo
 var _swatch_group: ButtonGroup = ButtonGroup.new()
+## Bumped on every state change, so a pending slow-connection hint can tell it's stale.
+var _state_change_id: int = 0
 
 @onready var _name_edit: LineEdit = %NameEdit
 @onready var _name_hint: Label = %NameHint
@@ -132,12 +136,25 @@ func _on_room_code_ready(code: String) -> void:
 func _on_net_state_changed(state: int) -> void:
 	match state:
 		Net.State.WAITING:
-			_status_label.text = "Tell the other player this code. Waiting for them to join..."
+			_status_label.text = "Tell the other player this code, then keep this game on screen while you wait."
 		Net.State.CONNECTING:
 			_status_label.text = "Connecting..."
 		Net.State.CONNECTED:
 			_status_label.text = "Connected! Saying hello..."
+	_state_change_id += 1
+	if state == Net.State.CONNECTING or state == Net.State.CONNECTED:
+		# A connection (not await) is dropped automatically if this screen is freed first.
+		get_tree().create_timer(SLOW_HINT_SEC).timeout.connect(_show_slow_hint.bind(_state_change_id))
 	_refresh()
+
+
+## A hidden browser tab pauses the game, so a slow connect usually means the
+## other player switched away. Tell this player what to ask them.
+func _show_slow_hint(change_id: int) -> void:
+	if change_id != _state_change_id or Net.opponent != null:
+		return
+	if Net.state == Net.State.CONNECTING or Net.state == Net.State.CONNECTED:
+		_status_label.text = "Still connecting... If the other player switched tabs or apps, ask them to go back to the game."
 
 
 func _on_connected(opponent: PlayerInfo) -> void:

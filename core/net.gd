@@ -20,7 +20,13 @@ signal log_line(text: String)
 
 enum State { IDLE, CREATING, WAITING, JOINING, CONNECTING, CONNECTED }
 
+## The network part of connecting (ICE), once offer and answer are exchanged.
+## Browsers do this themselves, even in a hidden tab, so it can be short.
 const CONNECT_TIMEOUT_SEC: float = 15.0
+## Waiting on the other player's game to do something (send its offer, answer
+## or HELLO). A hidden browser tab pauses the game entirely, so this is long
+## enough for a host who switched tabs to send the code to come back.
+const PEER_WAIT_SEC: float = 120.0
 const HEARTBEAT_INTERVAL_SEC: float = 1.0
 const HOST_ID: int = 1
 const GUEST_ID: int = 2
@@ -38,6 +44,7 @@ const REASONS: Dictionary = {
 	"bad_message": "Connection error (bad message).",
 	"too_many_messages": "Connection error (too many messages).",
 	"timeout": "Couldn't connect to the other player (timed out).",
+	"no_reply": "The other player's game didn't respond. It may have been left in the background.",
 	"ice_failed": "Couldn't connect to the other player (network blocked).",
 	"opponent_left": "The other player left.",
 	"link_lost": "Lost the connection to the other player.",
@@ -56,6 +63,8 @@ var _rtc_peer: WebRTCMultiplayerPeer = null
 var _connection: WebRTCPeerConnection = null
 var _timeout: Timer
 var _last_rtc_state: int = -1
+## True while the timeout is a PEER_WAIT_SEC wait on the other game, not the network.
+var _waiting_on_peer: bool = false
 var _watch: LinkWatch = LinkWatch.new()
 var link_status: LinkWatch.Status = LinkWatch.Status.OK
 var _since_heartbeat_sec: float = 0.0
@@ -198,12 +207,14 @@ func _on_offer_received(sdp: String) -> void:
 	if _connection != null and not is_host:
 		_log("Got offer")
 		_connection.set_remote_description("offer", sdp)
+		_wait_on_network()
 
 
 func _on_answer_received(sdp: String) -> void:
 	if _connection != null and is_host:
 		_log("Got answer")
 		_connection.set_remote_description("answer", sdp)
+		_wait_on_network()
 
 
 func _on_ice_received(media: String, index: int, candidate: String) -> void:
@@ -220,7 +231,8 @@ func _on_signalling_closed(reason: String) -> void:
 
 func _start_rtc() -> void:
 	_set_state(State.CONNECTING)
-	_timeout.start(CONNECT_TIMEOUT_SEC)
+	# Host waits for the answer, guest for the offer.
+	_wait_on_peer()
 	_rtc_peer = WebRTCMultiplayerPeer.new()
 	if is_host:
 		_rtc_peer.create_server()
@@ -255,7 +267,8 @@ func _on_ice_candidate_created(media: String, index: int, candidate: String) -> 
 
 func _on_peer_connected(_id: int) -> void:
 	_log("Peer-to-peer link is up")
-	# The connect timeout keeps running until the opponent's HELLO arrives.
+	# Keep a timeout running until the opponent's HELLO arrives.
+	_wait_on_peer()
 	_signalling.close()
 	_watch.heard(Time.get_ticks_msec())
 	_since_heartbeat_sec = 0.0
@@ -307,7 +320,17 @@ func _on_peer_packet(_id: int, packet: PackedByteArray) -> void:
 func _on_timeout() -> void:
 	# CONNECTED without an opponent means the link came up but HELLO never arrived.
 	if state == State.CONNECTING or (state == State.CONNECTED and opponent == null):
-		_fail("timeout")
+		_fail("no_reply" if _waiting_on_peer else "timeout")
+
+
+func _wait_on_peer() -> void:
+	_waiting_on_peer = true
+	_timeout.start(PEER_WAIT_SEC)
+
+
+func _wait_on_network() -> void:
+	_waiting_on_peer = false
+	_timeout.start(CONNECT_TIMEOUT_SEC)
 
 
 # --- Helpers ----------------------------------------------------------------
