@@ -28,8 +28,15 @@ var _my_topped_msec: int = -1
 var _board_dirty: bool = true
 var _snapshot_timer: float = 0.0
 var _sudden_death_shown: bool = false
+## Junk each side has sent, after blocking. Theirs is counted from the ATTACKs
+## that arrive, so both screens show the same numbers.
+var _my_sent: int = 0
+var _their_sent: int = 0
 
 @onready var _board_view: GemGridView = %BoardView
+@onready var _effects: GemEffects = %Effects
+@onready var _my_sent_label: Label = %MySent
+@onready var _their_sent_label: Label = %TheirSent
 @onready var _next_view: GemGridView = %NextView
 @onready var _incoming_view: GemGridView = %IncomingView
 @onready var _incoming_label: Label = %IncomingLabel
@@ -62,11 +69,13 @@ func _start() -> void:
 	_sudden_death_label.hide()
 	_show_incoming(0)
 	_their_incoming.text = ""
+	_effects.grid = _board_view
 	_game = DropGame.new()
 	_game.changed.connect(_redraw)
 	_game.chain_step.connect(_on_chain_step)
 	_game.chain_finished.connect(func(_chain: int) -> void: _chain_label.text = "")
-	_game.attack_sent.connect(func(amount: int) -> void: send(Kind.ATTACK, {"n": amount}))
+	_game.attack_sent.connect(_on_attack_sent)
+	_game.junk_dropped.connect(func(_amount: int) -> void: _board_view.shake(4.0))
 	_game.incoming_changed.connect(_on_incoming_changed)
 	_game.topped_out.connect(_on_topped_out)
 	_start_msec = Time.get_ticks_msec()
@@ -118,8 +127,16 @@ func _redraw() -> void:
 	_next_view.show_cells(PackedInt32Array([_game.next_colours[1], _game.next_colours[0]]))
 
 
-func _on_chain_step(chain: int, _cleared: int) -> void:
+func _on_chain_step(chain: int, groups: Array[PackedInt32Array], colours: Array[int]) -> void:
 	_chain_label.text = "%d chain!" % chain if chain > 1 else ""
+	_effects.show_clear(chain, groups, colours)
+
+
+func _on_attack_sent(amount: int) -> void:
+	send(Kind.ATTACK, {"n": amount})
+	_my_sent += amount
+	_my_sent_label.text = "Junk sent: %d" % _my_sent
+	_effects.show_attack(amount)
 
 
 func _on_incoming_changed(amount: int) -> void:
@@ -149,8 +166,13 @@ func _on_opponent_message(kind: int, data: Dictionary) -> void:
 	match kind:
 		Kind.ATTACK:
 			var amount: Variant = data.get("n")
-			if typeof(amount) == TYPE_INT and _my_topped_msec < 0:
-				_game.add_incoming(clampi(amount, 0, GemBoard.MAX_ATTACK))
+			if typeof(amount) != TYPE_INT:
+				return
+			var junk: int = clampi(amount, 0, GemBoard.MAX_ATTACK)
+			_their_sent += junk
+			_their_sent_label.text = "Junk sent: %d" % _their_sent
+			if _my_topped_msec < 0:
+				_game.add_incoming(junk)
 		Kind.BOARD:
 			var their_board: GemBoard = GemBoard.decode(str(data.get("b", "")))
 			if their_board != null:

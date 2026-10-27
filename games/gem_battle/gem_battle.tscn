@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://games/gem_battle/gem_battle.gd" id="1_gem"]
 [ext_resource type="Script" path="res://games/gem_battle/gem_grid_view.gd" id="2_grid"]
+[ext_resource type="Script" path="res://games/gem_battle/gem_effects.gd" id="3_effects"]
 
 [node name="GemBattle" type="Node"]
 script = ExtResource("1_gem")
@@ -54,6 +55,13 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 20
 horizontal_alignment = 1
 
+[node name="MySent" type="Label" parent="UI/Margin/Column/Boards/Mine"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Junk sent: 0"
+horizontal_alignment = 1
+
 [node name="Incoming" type="HBoxContainer" parent="UI/Margin/Column/Boards/Mine"]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
@@ -76,10 +84,21 @@ theme_override_font_sizes/font_size = 16
 
 [node name="BoardView" type="Control" parent="UI/Margin/Column/Boards/Mine"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(240, 480)
+custom_minimum_size = Vector2(240, 460)
 layout_mode = 2
 size_flags_vertical = 3
 script = ExtResource("2_grid")
+
+[node name="Effects" type="Control" parent="UI/Margin/Column/Boards/Mine/BoardView"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_effects")
 
 [node name="Side" type="VBoxContainer" parent="UI/Margin/Column/Boards"]
 custom_minimum_size = Vector2(160, 0)
@@ -137,6 +156,13 @@ custom_minimum_size = Vector2(0, 22)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.55, 0.3, 1)
 theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+
+[node name="TheirSent" type="Label" parent="UI/Margin/Column/Boards/Theirs"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Junk sent: 0"
 horizontal_alignment = 1
 
 [node name="TheirBoard" type="Control" parent="UI/Margin/Column/Boards/Theirs"]

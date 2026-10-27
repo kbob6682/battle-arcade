@@ -14,8 +14,11 @@ extends RefCounted
 
 signal changed
 signal piece_spawned
-## A chain step cleared some gems. chain counts from 1.
-signal chain_step(chain: int, cleared: int)
+## A chain step cleared some gems. chain counts from 1; groups are the cell
+## indexes cleared (now empty) and colours each group's colour, for effects.
+signal chain_step(chain: int, groups: Array[PackedInt32Array], colours: Array[int])
+## Incoming junk just landed on the board.
+signal junk_dropped(amount: int)
 ## The chain that started when the last pair landed is over.
 signal chain_finished(chain: int)
 ## Junk to send to the opponent, after blocking.
@@ -188,13 +191,19 @@ func _lock() -> void:
 
 
 func _resolve_next() -> void:
-	var groups: Array[PackedInt32Array] = board.resolve_step()
+	# board.resolve_step(), done in parts so the colours are known before clearing.
+	board.apply_gravity()
+	var groups: Array[PackedInt32Array] = board.find_groups()
 	if not groups.is_empty():
+		var colours: Array[int] = []
+		for group: PackedInt32Array in groups:
+			colours.append(board.cells[group[0]])
+		board.clear_groups(groups)
 		_chain += 1
 		_chain_extra_gems += GemBoard.extra_gems(groups)
 		_step_timer = CHAIN_STEP_SEC
 		changed.emit()
-		chain_step.emit(_chain, GemBoard.MIN_GROUP * groups.size() + GemBoard.extra_gems(groups))
+		chain_step.emit(_chain, groups, colours)
 		return
 	if _chain > 0:
 		_finish_chain()
@@ -226,6 +235,7 @@ func _drop_incoming() -> void:
 	_step_timer = JUNK_PAUSE_SEC
 	changed.emit()
 	incoming_changed.emit(incoming)
+	junk_dropped.emit(amount)
 
 
 func _spawn() -> void:

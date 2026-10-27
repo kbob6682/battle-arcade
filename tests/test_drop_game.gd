@@ -227,3 +227,25 @@ func junk_on(b: GemBoard) -> int:
 		if value == GemBoard.JUNK:
 			count += 1
 	return count
+
+
+func test_clear_words_show_the_bonus() -> void:
+	check_eq(GemEffects.clear_word(3), "Nice!", "3 gems")
+	check_eq(GemEffects.clear_word(4), "Great! +1", "4 gems")
+	check_eq(GemEffects.clear_word(5), "Awesome! +2", "5 gems")
+	check_eq(GemEffects.clear_word(7), "Amazing! +4", "7 gems")
+
+
+func test_effects_run_without_errors() -> void:
+	var grid := GemGridView.new()
+	grid.size = Vector2(240, 480)
+	add_child(grid)
+	var effects := GemEffects.new()
+	grid.add_child(effects)
+	effects.grid = grid
+	var groups: Array[PackedInt32Array] = [PackedInt32Array([66, 67, 68, 69])]
+	effects.show_clear(3, groups, [2] as Array[int])
+	effects.show_attack(8)
+	for i: int in 30:
+		await get_tree().process_frame
+	grid.queue_free()
