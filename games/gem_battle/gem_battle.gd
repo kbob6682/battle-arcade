@@ -29,7 +29,7 @@ func _start() -> void:
 	_my_name.add_theme_color_override("font_color", local_player.get_colour())
 	_their_name.text = "vs %s" % opponent.info.player_name
 	_their_name.add_theme_color_override("font_color", opponent.info.get_colour())
-	_status.text = "Left/Right move, Z/X rotate, Down soft drop, Space hard drop"
+	_status.text = "Arrows or WASD: move, Up/W rotate, Down/S soft drop. Z/X rotate either way. Space hard drop."
 	_chain_label.text = ""
 	_game = DropGame.new()
 	_game.changed.connect(_redraw)

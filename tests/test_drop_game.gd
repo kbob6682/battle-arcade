@@ -140,3 +140,19 @@ func test_scene_starts_and_runs_against_the_bot() -> void:
 	check(not game.is_finished(), "still playing")
 	game.queue_free()
 	bot.queue_free()
+
+
+func test_arrows_and_wasd_both_work() -> void:
+	var expected: Dictionary = {
+		"gem_left": [KEY_LEFT, KEY_A],
+		"gem_right": [KEY_RIGHT, KEY_D],
+		"gem_soft_drop": [KEY_DOWN, KEY_S],
+		"gem_rotate_cw": [KEY_X, KEY_UP, KEY_W],
+		"gem_rotate_ccw": [KEY_Z],
+		"gem_hard_drop": [KEY_SPACE],
+	}
+	for action: String in expected:
+		var keys: Array = []
+		for event: InputEvent in InputMap.action_get_events(action):
+			keys.append((event as InputEventKey).physical_keycode)
+		check_eq(keys, expected[action], action)
