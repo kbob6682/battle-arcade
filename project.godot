@@ -24,6 +24,11 @@ Session="*res://core/session.gd"
 signalling_url="http://127.0.0.1:8787"
 signalling_url.release="https://battle-arcade-signal.battle-arcade-signal.workers.dev"
 
+[display]
+
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
 [input]
 
 primary_click={
