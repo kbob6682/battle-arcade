@@ -3,6 +3,8 @@ import {
   Close,
   MAX_MESSAGE_BYTES,
   MAX_MESSAGES_PER_SOCKET,
+  PING_FRAME,
+  PONG_FRAME,
   PROTOCOL_VERSION,
   encode,
   parseRelayMessage,
@@ -22,6 +24,12 @@ interface Attachment {
 // signalling between them, and deletes itself after ROOM_TTL_MS.
 // Uses hibernatable WebSockets, so an idle room isn't billed for duration.
 export class Room extends DurableObject<Env> {
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    // Keepalive pings are answered by the runtime without waking the Room.
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(PING_FRAME, PONG_FRAME));
+  }
+
   // Claims this room. Returns the host token, or null if the code is taken.
   async create(): Promise<string | null> {
     if ((await this.ctx.storage.get<string>("host_token")) !== undefined) return null;

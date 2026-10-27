@@ -36,6 +36,15 @@ Relayed between players (the Room validates each one and forwards only these fie
 | `answer` | `sdp` | Guest only |
 | `ice` | `media`, `index`, `name` | Both. These match Godot's `WebRTCPeerConnection.ice_candidate_created(media, index, name)`. |
 
+Keepalive:
+
+| Frame | Meaning |
+|---|---|
+| `{"v":1,"t":"ping"}` | Client sends this every 5 s while its socket is open. |
+| `{"v":1,"t":"pong"}` | The runtime's auto-response. It doesn't wake a hibernating Room and doesn't count towards the 100-message limit. |
+
+The auto-response only matches the exact text above, so send it byte-for-byte (no extra spaces, `v` before `t`). The client gives up with `connection_lost` if nothing arrives within 10 s of a ping. The timer starts at the ping, not the last message, so a hidden browser tab (game paused, no pings sent) isn't mistaken for a dead link when it comes back.
+
 ## Close codes
 
 | Code | Reason | When |
@@ -57,4 +66,4 @@ Relayed between players (the Room validates each one and forwards only these fie
 
 ## Limits and costs
 
-Free plan only. A match uses roughly 3 Worker requests plus a few Durable Object requests, and the hibernating WebSockets don't bill duration while idle.
+Free plan only. A match uses roughly 3 Worker requests plus a few Durable Object requests, and the hibernating WebSockets don't bill duration while idle. Keepalive pings are answered without waking the Room; a host waiting the full 10 minutes sends about 120.

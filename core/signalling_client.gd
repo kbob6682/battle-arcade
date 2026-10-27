@@ -18,6 +18,15 @@ signal closed(reason: String)
 signal debug(text: String)
 
 const PROTOCOL_VERSION: int = 1
+## Keepalive (docs/signalling.md): ping this often while the socket is open...
+const KEEPALIVE_INTERVAL_SEC: float = 5.0
+## ...and give up if nothing comes back this long after a ping. Timed from the
+## ping, not the last message, so a tab that was hidden (game paused, no
+## pings sent) isn't counted as a dead link when it comes back.
+const KEEPALIVE_TIMEOUT_SEC: float = 10.0
+## Must match PING_FRAME in worker/src/protocol.ts exactly: the Worker answers it
+## with an auto-response, which only matches identical text.
+const PING_FRAME: String = "{\"v\":1,\"t\":\"ping\"}"
 
 var base_url: String = ""
 
@@ -25,6 +34,9 @@ var _http: HTTPRequest
 var _ws: WebSocketPeer = null
 var _was_open: bool = false
 var _closing: bool = false
+var _since_ping_sec: float = 0.0
+## Seconds since the oldest unanswered ping, or -1 if none is outstanding.
+var _waiting_for_reply_sec: float = -1.0
 
 
 func _ready() -> void:
@@ -64,7 +76,7 @@ func close() -> void:
 		_ws.close(1000, "done")
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _ws == null:
 		return
 	_ws.poll()
@@ -72,7 +84,9 @@ func _process(_delta: float) -> void:
 		WebSocketPeer.STATE_OPEN:
 			_was_open = true
 			while _ws.get_available_packet_count() > 0:
+				_waiting_for_reply_sec = -1.0
 				_handle(_ws.get_packet().get_string_from_utf8())
+			_tick_keepalive(delta)
 		WebSocketPeer.STATE_CLOSED:
 			var reason: String = _ws.get_close_reason()
 			if not _closing:
@@ -83,6 +97,29 @@ func _process(_delta: float) -> void:
 			if reason.is_empty():
 				reason = "connection_lost" if _was_open else "server_unreachable"
 			closed.emit(reason)
+
+
+func _tick_keepalive(delta: float) -> void:
+	if _waiting_for_reply_sec >= 0.0:
+		_waiting_for_reply_sec += delta
+		if _waiting_for_reply_sec >= KEEPALIVE_TIMEOUT_SEC:
+			debug.emit("No reply from the game server for %d s" % int(KEEPALIVE_TIMEOUT_SEC))
+			_drop("connection_lost")
+			return
+	_since_ping_sec += delta
+	if _since_ping_sec >= KEEPALIVE_INTERVAL_SEC:
+		_since_ping_sec = 0.0
+		_ws.send_text(PING_FRAME)
+		if _waiting_for_reply_sec < 0.0:
+			_waiting_for_reply_sec = 0.0
+
+
+## Abandons a socket that has stopped answering and reports it as closed.
+## close() can't be used: on a dead network the close handshake never finishes.
+func _drop(reason: String) -> void:
+	_ws.close()
+	_ws = null
+	closed.emit(reason)
 
 
 func _on_create_completed(result: int, status: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
@@ -110,6 +147,8 @@ func _open(code: String, token: String) -> void:
 	_ws = WebSocketPeer.new()
 	_was_open = false
 	_closing = false
+	_since_ping_sec = 0.0
+	_waiting_for_reply_sec = -1.0
 	if _ws.connect_to_url(url) != OK:
 		_ws = null
 		closed.emit("server_unreachable")

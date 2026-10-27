@@ -2,7 +2,7 @@ import { env, runDurableObjectAlarm } from "cloudflare:test";
 import { exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { isAllowedOrigin, newRoomCode } from "../src/index";
-import { CODE_PATTERN, Close, PROTOCOL_VERSION } from "../src/protocol";
+import { CODE_PATTERN, Close, MAX_MESSAGES_PER_SOCKET, PING_FRAME, PROTOCOL_VERSION } from "../src/protocol";
 
 const BASE = "https://signal.test";
 const v = PROTOCOL_VERSION;
@@ -182,6 +182,19 @@ describe("rejections", () => {
   it("requires a WebSocket upgrade", async () => {
     const res = await exports.default.fetch(`${BASE}/rooms/ABCDE/ws`);
     expect(res.status).toBe(426);
+  });
+});
+
+describe("keepalive", () => {
+  it("answers pings without counting them as messages", async () => {
+    const { host, guest } = await pairUp();
+    for (let i = 0; i < MAX_MESSAGES_PER_SOCKET + 20; i++) {
+      host.send(PING_FRAME);
+      expect(await host.next()).toEqual({ v, t: "pong" });
+    }
+    // Still open and relaying after more pings than the message limit.
+    host.send({ v, t: "offer", sdp: "o" });
+    expect(await guest.next()).toEqual({ v, t: "offer", sdp: "o" });
   });
 });
 

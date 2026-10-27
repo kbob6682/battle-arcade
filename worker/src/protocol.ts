@@ -8,6 +8,13 @@ export const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const CODE_LENGTH = 5;
 export const CODE_PATTERN = /^[A-HJKMNP-Z2-9]{5}$/;
 
+// Keepalive: clients send PING_FRAME every few seconds while their socket is
+// open, and the Room answers PONG_FRAME through a WebSocket auto-response.
+// That doesn't wake a hibernating Room or count towards MAX_MESSAGES_PER_SOCKET.
+// The client compares the exact text, so keep these byte-for-byte stable.
+export const PING_FRAME = `{"v":${PROTOCOL_VERSION},"t":"ping"}`;
+export const PONG_FRAME = `{"v":${PROTOCOL_VERSION},"t":"pong"}`;
+
 export const MAX_MESSAGE_BYTES = 16 * 1024;
 export const MAX_SDP_LENGTH = 12 * 1024;
 export const MAX_MESSAGES_PER_SOCKET = 100;
