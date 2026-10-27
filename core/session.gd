@@ -32,6 +32,7 @@ var match_number: int = 0
 var last_outcome: int = -1
 
 var _end_message: String = ""
+var _back_from_match: bool = false
 var _session_id: int = 0
 var _banner: PanelContainer
 var _banner_label: Label
@@ -62,6 +63,14 @@ func take_end_message() -> String:
 	var text: String = _end_message
 	_end_message = ""
 	return text
+
+
+## True once after a match ends with "Pick Another Game", for the lobby's
+## "Back to the Lobby" banner. Not set when the lobby first opens.
+func take_back_from_match() -> bool:
+	var value: bool = _back_from_match
+	_back_from_match = false
+	return value
 
 
 # --- Starting a session -----------------------------------------------------
@@ -184,6 +193,7 @@ func leave() -> void:
 
 func _enter_lobby() -> void:
 	_reset_flags()
+	_back_from_match = true
 	if opponent is BotOpponent:
 		(opponent as BotOpponent).stop_match()
 	_go(LOBBY_SCENE)

@@ -2,6 +2,9 @@ extends Control
 ## Lobby: the host picks the game and mode (the guest sees it update live),
 ## then both press Ready. In bot mode the player also picks the bot's level.
 
+const BANNER_FONT_SIZE: int = 56
+const BANNER_FLASHES: int = 3
+
 var _games: Array[GameInfo] = []
 
 @onready var _vs_label: RichTextLabel = %VsLabel
@@ -34,6 +37,38 @@ func _ready() -> void:
 	Session.lobby_changed.connect(_refresh)
 	Net.ping_result.connect(func(rtt_msec: int) -> void: _ping_label.text = "%d ms" % rtt_msec)
 	_refresh()
+	if Session.take_back_from_match():
+		_show_back_banner()
+
+
+## "Back to the Lobby" pops in, flashes a few times, then fades. Built in code
+## so the lobby layout doesn't change; it ignores the mouse.
+func _show_back_banner() -> void:
+	var label := Label.new()
+	label.text = "Back to the Lobby"
+	label.mouse_filter = MOUSE_FILTER_IGNORE
+	label.add_theme_font_size_override("font_size", BANNER_FONT_SIZE)
+	label.add_theme_color_override("font_color", Color(1, 0.88, 0.3))
+	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	label.add_theme_constant_override("outline_size", 10)
+	# A full-screen CenterContainer keeps it centred whatever the window size.
+	var centre := CenterContainer.new()
+	centre.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(centre)
+	centre.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	centre.add_child(label)
+	label.reset_size()
+	label.pivot_offset = label.size / 2.0
+	label.scale = Vector2(0.3, 0.3)
+	var tween: Tween = label.create_tween()
+	tween.tween_property(label, "scale", Vector2(1.15, 1.15), 0.15).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "scale", Vector2.ONE, 0.1)
+	for i: int in BANNER_FLASHES:
+		tween.tween_property(label, "modulate:a", 0.25, 0.15)
+		tween.tween_property(label, "modulate:a", 1.0, 0.15)
+	tween.tween_interval(0.3)
+	tween.tween_property(label, "modulate:a", 0.0, 0.3)
+	tween.tween_callback(centre.queue_free)
 
 
 func _on_game_selected(index: int) -> void:
