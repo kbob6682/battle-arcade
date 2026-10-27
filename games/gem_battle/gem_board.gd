@@ -203,20 +203,28 @@ func drop_junk(count: int, rng: RandomNumberGenerator) -> int:
 	return overflow
 
 
+## The cells next to each cell, built once. Matching runs hundreds of times
+## per bot decision, so it shouldn't build these lists every time.
+static var _neighbour_table: Array[PackedInt32Array] = []
+
+
 func _neighbours(index: int) -> PackedInt32Array:
-	var result: PackedInt32Array = PackedInt32Array()
-	var x: int = index % WIDTH
-	@warning_ignore("integer_division")
-	var y: int = index / WIDTH
-	if x > 0:
-		result.append(index - 1)
-	if x < WIDTH - 1:
-		result.append(index + 1)
-	if y > 0:
-		result.append(index - WIDTH)
-	if y < HEIGHT - 1:
-		result.append(index + WIDTH)
-	return result
+	if _neighbour_table.is_empty():
+		for i: int in WIDTH * HEIGHT:
+			var result: PackedInt32Array = PackedInt32Array()
+			var x: int = i % WIDTH
+			@warning_ignore("integer_division")
+			var y: int = i / WIDTH
+			if x > 0:
+				result.append(i - 1)
+			if x < WIDTH - 1:
+				result.append(i + 1)
+			if y > 0:
+				result.append(i - WIDTH)
+			if y < HEIGHT - 1:
+				result.append(i + WIDTH)
+			_neighbour_table.append(result)
+	return _neighbour_table[index]
 
 
 ## Fisher-Yates with the given RNG, so the order is reproducible from its seed.

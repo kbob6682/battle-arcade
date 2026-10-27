@@ -100,7 +100,7 @@ func test_speeds_up_over_time() -> void:
 	check(is_equal_approx(game.fall_interval(), DropGame.SUDDEN_DEATH_FALL_SEC), "never faster than sudden death")
 
 
-func test_placeholder_bot_tops_out_and_says_so() -> void:
+func test_bot_tops_out_under_junk_and_says_so() -> void:
 	var bot: GemBattleBot = GameRegistry.find("gem_battle").create_bot(BotOpponent.Difficulty.EASY) as GemBattleBot
 	var got: Array[int] = []
 	bot.game_message.connect(func(kind: int, _data: Dictionary) -> void: got.append(kind))
@@ -109,10 +109,13 @@ func test_placeholder_bot_tops_out_and_says_so() -> void:
 	bot.start_match(1234, "Drop")
 	# Simulate up to 20 minutes of play without waiting for it.
 	for i: int in 24000:
+		# Keep it buried in junk so even a good bot tops out.
+		if bot._game.incoming == 0:
+			bot._game.add_incoming(GemBoard.MAX_ATTACK)
 		bot._process(0.05)
 		if bot._game.phase == DropGame.Phase.TOPPED:
 			break
-	check_eq(bot._game.phase, DropGame.Phase.TOPPED, "random play tops out")
+	check_eq(bot._game.phase, DropGame.Phase.TOPPED, "tops out under constant junk")
 	await get_tree().process_frame
 	check(got.has(GemBattle.Kind.BOARD), "sent board snapshots")
 	check_eq(got.back(), GemBattle.Kind.TOPPED, "TOPPED is the last message")
