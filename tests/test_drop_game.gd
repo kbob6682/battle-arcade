@@ -90,11 +90,14 @@ func test_tops_out_when_a_new_pair_has_no_room() -> void:
 
 func test_speeds_up_over_time() -> void:
 	var game: DropGame = started()
-	check(is_equal_approx(game.fall_interval(), DropGame.BASE_FALL_SEC), "starts at base speed")
-	game.elapsed = DropGame.SPEEDUP_EVERY_SEC
-	check(game.fall_interval() < DropGame.BASE_FALL_SEC, "faster after 30 s")
+	var expected: Array[float] = [0.8, 0.526, 0.346, 0.228, 0.15]
+	for step: int in expected.size():
+		game.elapsed = step * DropGame.SPEEDUP_EVERY_SEC + 1.0
+		check(absf(game.fall_interval() - expected[step]) < 0.002, "step %d at %d s: %.3f" % [step, int(game.elapsed), game.fall_interval()])
+	game.elapsed = DropGame.SPEEDUP_EVERY_SEC - 0.1
+	check(is_equal_approx(game.fall_interval(), DropGame.BASE_FALL_SEC), "no change before 45 s")
 	game.elapsed = 100000.0
-	check(is_equal_approx(game.fall_interval(), DropGame.MIN_FALL_SEC), "never faster than the minimum")
+	check(is_equal_approx(game.fall_interval(), DropGame.SUDDEN_DEATH_FALL_SEC), "never faster than sudden death")
 
 
 func test_placeholder_bot_tops_out_and_says_so() -> void:
@@ -171,9 +174,9 @@ func test_a_chain_blocks_incoming_junk_first() -> void:
 	game.move(-1)
 	game.hard_drop()
 	settle(game)
-	check(sent.is_empty(), "a 1-chain (1 junk) only blocks")
-	check_eq(game.incoming, 0, "the other 4 dropped")
-	check_eq(junk_on(game.board), 4, "4 junk on the board")
+	check(sent.is_empty(), "a single clear (2 junk) only blocks")
+	check_eq(game.incoming, 0, "the other 3 dropped")
+	check_eq(junk_on(game.board), 3, "3 junk on the board")
 
 
 func test_a_chain_with_nothing_incoming_attacks() -> void:
@@ -186,7 +189,7 @@ func test_a_chain_with_nothing_incoming_attacks() -> void:
 	game.move(-1)
 	game.hard_drop()
 	settle(game)
-	check_eq(sent, [1] as Array[int], "sent 1 junk")
+	check_eq(sent, [2] as Array[int], "a single clear sends 2 junk")
 
 
 func test_junk_drops_at_most_three_rows_per_landing() -> void:

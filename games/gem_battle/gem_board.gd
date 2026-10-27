@@ -31,11 +31,21 @@ static func in_bounds(x: int, y: int) -> bool:
 	return x >= 0 and x < WIDTH and y >= 0 and y < HEIGHT
 
 
-## Junk sent for a chain of this many steps: 1, 2, 4, 8, 16, then capped at MAX_ATTACK.
-static func attack_for_chain(chain: int) -> int:
+## Junk sent for a chain: 2 for a single clear, doubling each chain step
+## (4, 8, 16), plus 1 for every gem beyond 3 in each group cleared, capped at
+## MAX_ATTACK. extra_gems is the total of those extra gems over the chain.
+static func attack_for(chain: int, extra_gems: int) -> int:
 	if chain <= 0:
 		return 0
-	return mini(1 << mini(chain - 1, 30), MAX_ATTACK)
+	return mini((2 << mini(chain - 1, 29)) + extra_gems, MAX_ATTACK)
+
+
+## Gems in these groups beyond MIN_GROUP each (a 5-match has 2).
+static func extra_gems(groups: Array[PackedInt32Array]) -> int:
+	var extra: int = 0
+	for group: PackedInt32Array in groups:
+		extra += group.size() - MIN_GROUP
+	return extra
 
 
 ## Blocking: your attack first cancels junk that's on its way to you.
@@ -153,20 +163,19 @@ func clear_groups(groups: Array[PackedInt32Array]) -> int:
 
 
 ## One step of a chain: let everything fall, then clear whatever matches.
-## Returns the number of gems cleared; 0 means the board has settled and any
-## chain is over. Step by step so the game can animate each clear.
-func resolve_step() -> int:
+## Returns the groups cleared; none means the board has settled and any chain
+## is over. Step by step so the game can animate each clear.
+func resolve_step() -> Array[PackedInt32Array]:
 	apply_gravity()
 	var groups: Array[PackedInt32Array] = find_groups()
-	if groups.is_empty():
-		return 0
-	return clear_groups(groups)
+	clear_groups(groups)
+	return groups
 
 
 ## Resolves every chain step at once (for bots and tests). Returns the chain length.
 func resolve() -> int:
 	var chain: int = 0
-	while resolve_step() > 0:
+	while not resolve_step().is_empty():
 		chain += 1
 	return chain
 

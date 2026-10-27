@@ -57,9 +57,16 @@ func test_falling_gems_make_a_chain() -> void:
 
 
 func test_attack_sizes_double_and_cap() -> void:
-	var expected: Array[int] = [0, 1, 2, 4, 8, 16, 24, 24]
+	var expected: Array[int] = [0, 2, 4, 8, 16, 24, 24]
 	for chain: int in expected.size():
-		check_eq(GemBoard.attack_for_chain(chain), expected[chain], "chain %d" % chain)
+		check_eq(GemBoard.attack_for(chain, 0), expected[chain], "chain %d" % chain)
+	check_eq(GemBoard.attack_for(1, 2), 4, "a 5-match sends 2 extra")
+	check_eq(GemBoard.attack_for(4, 20), 24, "bonus still capped")
+
+
+func test_bigger_groups_count_extra_gems() -> void:
+	var b: GemBoard = board(["11111.", "2222.."])
+	check_eq(GemBoard.extra_gems(b.find_groups()), 3, "a 5-group (2 extra) and a 4-group (1 extra)")
 
 
 func test_attack_cancels_incoming_junk_first() -> void:

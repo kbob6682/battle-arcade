@@ -29,15 +29,15 @@ enum Phase { NOT_STARTED, FALLING, RESOLVING, TOPPED }
 const OFFSETS: Array[Vector2i] = [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 ## The pivot appears here, with the second gem above it.
 const SPAWN: Vector2i = Vector2i(2, 1)
-## Starting fall speed (seconds per row), and how it speeds up over time.
+## Fall speed in seconds per row. It steps up every SPEEDUP_EVERY_SEC, by
+## the same factor each time (about 1.5x), until it reaches the sudden-death
+## speed after SPEEDUP_STEPS steps (3:00): 0.8, 0.53, 0.35, 0.23, then 0.15.
 const BASE_FALL_SEC: float = 0.8
-const SPEEDUP_EVERY_SEC: float = 30.0
-const SPEEDUP_FACTOR: float = 0.85
-const MIN_FALL_SEC: float = 0.08
-const SOFT_DROP_SEC: float = 0.04
-## Sudden death: after this long everything falls at least this fast.
-const SUDDEN_DEATH_SEC: float = 180.0
+const SPEEDUP_EVERY_SEC: float = 45.0
+const SPEEDUP_STEPS: int = 4
+const SUDDEN_DEATH_SEC: float = SPEEDUP_EVERY_SEC * SPEEDUP_STEPS
 const SUDDEN_DEATH_FALL_SEC: float = 0.15
+const SOFT_DROP_SEC: float = 0.04
 ## Most junk that drops after one landing (3 rows); the rest waits.
 const MAX_JUNK_PER_LANDING: int = 18
 ## Pauses so players can see what happened: after landing, and between chain steps.
@@ -67,6 +67,8 @@ var _junk_rng: RandomNumberGenerator
 var _fall_timer: float = 0.0
 var _step_timer: float = 0.0
 var _chain: int = 0
+## Gems beyond 3 per group over the current chain; bigger groups send more junk.
+var _chain_extra_gems: int = 0
 var _junk_dropped: bool = false
 
 
@@ -99,11 +101,8 @@ func tick(delta: float) -> void:
 
 
 func fall_interval() -> float:
-	var level: int = int(elapsed / SPEEDUP_EVERY_SEC)
-	var interval: float = maxf(BASE_FALL_SEC * pow(SPEEDUP_FACTOR, level), MIN_FALL_SEC)
-	if is_sudden_death():
-		interval = minf(interval, SUDDEN_DEATH_FALL_SEC)
-	return interval
+	var level: int = mini(int(elapsed / SPEEDUP_EVERY_SEC), SPEEDUP_STEPS)
+	return BASE_FALL_SEC * pow(SUDDEN_DEATH_FALL_SEC / BASE_FALL_SEC, float(level) / SPEEDUP_STEPS)
 
 
 func is_sudden_death() -> bool:
@@ -182,18 +181,20 @@ func _lock() -> void:
 	board.apply_gravity()
 	phase = Phase.RESOLVING
 	_chain = 0
+	_chain_extra_gems = 0
 	_junk_dropped = false
 	_step_timer = LAND_PAUSE_SEC
 	changed.emit()
 
 
 func _resolve_next() -> void:
-	var cleared: int = board.resolve_step()
-	if cleared > 0:
+	var groups: Array[PackedInt32Array] = board.resolve_step()
+	if not groups.is_empty():
 		_chain += 1
+		_chain_extra_gems += GemBoard.extra_gems(groups)
 		_step_timer = CHAIN_STEP_SEC
 		changed.emit()
-		chain_step.emit(_chain, cleared)
+		chain_step.emit(_chain, GemBoard.MIN_GROUP * groups.size() + GemBoard.extra_gems(groups))
 		return
 	if _chain > 0:
 		_finish_chain()
@@ -206,7 +207,9 @@ func _resolve_next() -> void:
 func _finish_chain() -> void:
 	var chain: int = _chain
 	_chain = 0
-	var result: Vector2i = GemBoard.cancel_incoming(incoming, GemBoard.attack_for_chain(chain))
+	var attack: int = GemBoard.attack_for(chain, _chain_extra_gems)
+	_chain_extra_gems = 0
+	var result: Vector2i = GemBoard.cancel_incoming(incoming, attack)
 	if result.x != incoming:
 		incoming = result.x
 		incoming_changed.emit(incoming)
