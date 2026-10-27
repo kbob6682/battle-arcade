@@ -65,7 +65,7 @@ My notes for this project live in my Obsidian vault at `C:\Users\Caleb\Documents
 - Never commit `.godot/`, export builds, `node_modules/`, `.wrangler/`, `.dev.vars` or `.claude/settings.local.json`.
 
 ## Scope
-Build Phase 1 only until I say it's solid: title screen, host/join with room codes, the signalling Worker, the WebRTC connection, the message system, the lobby flow (game picker, ready-up, countdown, results), and the opponent/bot hook. Don't start Gem Battle, profiles, rankings, badges or other mini games until I ask. Later phases follow the Development Plan in the design doc: Gem Battle (Drop and Swap), then Tower Toss (turn-based first), then the rest one at a time.
+Phase 1 (core app) was signed off on 2026-10-26. Now build Phase 2 only: Gem Battle, Drop and Swap modes, each with Easy, Medium and Hard bots, in `games/gem_battle/`. Gem Battle plugs in through the existing mini game interface; change core code only if the interface is missing something every game would need, and say so first. Don't start profiles, rankings, badges, emotes or other mini games until I ask. Later phases follow the Development Plan in the design doc: Tower Toss (turn-based first), then the rest one at a time.
 
 ## Current focus
-Phase 1: core app. Two computers connect reliably with a room code and pass messages both ways.
+Phase 2: Gem Battle. Work through the approved step plan, one playable step at a time.
