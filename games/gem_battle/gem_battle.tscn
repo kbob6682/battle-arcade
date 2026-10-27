@@ -54,9 +54,29 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 20
 horizontal_alignment = 1
 
+[node name="Incoming" type="HBoxContainer" parent="UI/Margin/Column/Boards/Mine"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="IncomingView" type="Control" parent="UI/Margin/Column/Boards/Mine/Incoming"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 20)
+layout_mode = 2
+size_flags_vertical = 4
+script = ExtResource("2_grid")
+rows = 1
+draw_background = false
+
+[node name="IncomingLabel" type="Label" parent="UI/Margin/Column/Boards/Mine/Incoming"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.55, 0.3, 1)
+theme_override_font_sizes/font_size = 16
+
 [node name="BoardView" type="Control" parent="UI/Margin/Column/Boards/Mine"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(260, 520)
+custom_minimum_size = Vector2(240, 480)
 layout_mode = 2
 size_flags_vertical = 3
 script = ExtResource("2_grid")
@@ -88,15 +108,42 @@ theme_override_colors/font_color = Color(1, 0.84, 0.25, 1)
 theme_override_font_sizes/font_size = 28
 horizontal_alignment = 1
 
+[node name="SuddenDeathLabel" type="Label" parent="UI/Margin/Column/Boards/Side"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 22
+text = "SUDDEN DEATH!"
+horizontal_alignment = 1
+
 [node name="Spacer" type="Control" parent="UI/Margin/Column/Boards/Side"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="TheirName" type="Label" parent="UI/Margin/Column/Boards/Side"]
+[node name="Theirs" type="VBoxContainer" parent="UI/Margin/Column/Boards"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TheirName" type="Label" parent="UI/Margin/Column/Boards/Theirs"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 18
 horizontal_alignment = 1
+
+[node name="TheirIncoming" type="Label" parent="UI/Margin/Column/Boards/Theirs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.55, 0.3, 1)
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+
+[node name="TheirBoard" type="Control" parent="UI/Margin/Column/Boards/Theirs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 280)
+layout_mode = 2
+script = ExtResource("2_grid")
 
 [node name="Status" type="Label" parent="UI/Margin/Column"]
 unique_name_in_owner = true

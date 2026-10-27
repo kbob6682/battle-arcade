@@ -111,7 +111,9 @@ func test_placeholder_bot_tops_out_and_says_so() -> void:
 			break
 	check_eq(bot._game.phase, DropGame.Phase.TOPPED, "random play tops out")
 	await get_tree().process_frame
-	check_eq(got, [GemBattle.Kind.TOPPED] as Array[int], "sent TOPPED")
+	check(got.has(GemBattle.Kind.BOARD), "sent board snapshots")
+	check_eq(got.back(), GemBattle.Kind.TOPPED, "TOPPED is the last message")
+	check_eq(got.count(GemBattle.Kind.TOPPED), 1, "TOPPED sent once")
 	bot.free()
 
 
@@ -156,3 +158,66 @@ func test_arrows_and_wasd_both_work() -> void:
 		for event: InputEvent in InputMap.action_get_events(action):
 			keys.append((event as InputEventKey).physical_keycode)
 		check_eq(keys, expected[action], action)
+
+
+func test_a_chain_blocks_incoming_junk_first() -> void:
+	var game: DropGame = started()
+	var sent: Array[int] = []
+	game.attack_sent.connect(func(amount: int) -> void: sent.append(amount))
+	game.add_incoming(5)
+	game.board.set_cell(0, GemBoard.HEIGHT - 1, 1)
+	game.piece_colours = [1, 1]
+	game.move(-1)
+	game.move(-1)
+	game.hard_drop()
+	settle(game)
+	check(sent.is_empty(), "a 1-chain (1 junk) only blocks")
+	check_eq(game.incoming, 0, "the other 4 dropped")
+	check_eq(junk_on(game.board), 4, "4 junk on the board")
+
+
+func test_a_chain_with_nothing_incoming_attacks() -> void:
+	var game: DropGame = started()
+	var sent: Array[int] = []
+	game.attack_sent.connect(func(amount: int) -> void: sent.append(amount))
+	game.board.set_cell(0, GemBoard.HEIGHT - 1, 1)
+	game.piece_colours = [1, 1]
+	game.move(-1)
+	game.move(-1)
+	game.hard_drop()
+	settle(game)
+	check_eq(sent, [1] as Array[int], "sent 1 junk")
+
+
+func test_junk_drops_at_most_three_rows_per_landing() -> void:
+	var game: DropGame = started()
+	game.add_incoming(30)
+	game.piece_colours = [1, 2]
+	game.hard_drop()
+	settle(game)
+	check_eq(junk_on(game.board), DropGame.MAX_JUNK_PER_LANDING, "18 dropped")
+	check_eq(game.incoming, 30 - DropGame.MAX_JUNK_PER_LANDING, "12 still waiting")
+
+
+func test_sudden_death_speeds_everything_up() -> void:
+	var game: DropGame = started()
+	game.elapsed = DropGame.SUDDEN_DEATH_SEC - 1.0
+	check(not game.is_sudden_death(), "not yet")
+	check(game.fall_interval() > DropGame.SUDDEN_DEATH_FALL_SEC, "still slower before")
+	game.elapsed = DropGame.SUDDEN_DEATH_SEC
+	check(game.is_sudden_death(), "sudden death at 3:00")
+	check(game.fall_interval() <= DropGame.SUDDEN_DEATH_FALL_SEC, "fast after")
+
+
+func test_both_players_agree_when_both_top_out() -> void:
+	check_eq(GemBattle.topped_result(1000, 2000), MiniGame.Outcome.LOSE, "topped first: lose")
+	check_eq(GemBattle.topped_result(2000, 1000), MiniGame.Outcome.WIN, "topped second: win")
+	check_eq(GemBattle.topped_result(1500, 1500), MiniGame.Outcome.DRAW, "same time: draw")
+
+
+func junk_on(b: GemBoard) -> int:
+	var count: int = 0
+	for value: int in b.cells:
+		if value == GemBoard.JUNK:
+			count += 1
+	return count

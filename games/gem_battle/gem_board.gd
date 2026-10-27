@@ -75,8 +75,12 @@ func copy() -> GemBoard:
 
 ## One character per cell ("0" empty, "1"-"5" gems, "6" junk), for snapshots.
 func encode() -> String:
+	return encode_cells(cells)
+
+
+static func encode_cells(values: PackedInt32Array) -> String:
 	var parts: PackedStringArray = PackedStringArray()
-	for value: int in cells:
+	for value: int in values:
 		parts.append(str(value))
 	return "".join(parts)
 

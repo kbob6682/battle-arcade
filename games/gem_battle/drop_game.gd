@@ -1,8 +1,13 @@
 class_name DropGame
 extends RefCounted
-## Drop mode for one board: the falling pair, its moves, landing, chains and
-## speed-up. Plain logic driven by tick(), so the player's game and the bots
-## run exactly the same rules, and tests can step it with fixed times.
+## Drop mode for one board: the falling pair, its moves, landing, chains,
+## attacks and incoming junk, and the speed-up. Plain logic driven by tick(),
+## so the player's game and the bots run exactly the same rules, and tests can
+## step it with fixed times.
+##
+## Junk: attacks from the opponent wait in `incoming`. When a pair lands, its
+## chain first cancels incoming junk (blocking) and sends the rest as an
+## attack; then up to MAX_JUNK_PER_LANDING of whatever is still incoming drops.
 ##
 ## The pair is a pivot gem plus a second gem on one side of it. Rotating moves
 ## the second gem round the pivot, nudging the pair off walls and stacks.
@@ -13,6 +18,9 @@ signal piece_spawned
 signal chain_step(chain: int, cleared: int)
 ## The chain that started when the last pair landed is over.
 signal chain_finished(chain: int)
+## Junk to send to the opponent, after blocking.
+signal attack_sent(amount: int)
+signal incoming_changed(amount: int)
 signal topped_out
 
 enum Phase { NOT_STARTED, FALLING, RESOLVING, TOPPED }
@@ -27,9 +35,15 @@ const SPEEDUP_EVERY_SEC: float = 30.0
 const SPEEDUP_FACTOR: float = 0.85
 const MIN_FALL_SEC: float = 0.08
 const SOFT_DROP_SEC: float = 0.04
+## Sudden death: after this long everything falls at least this fast.
+const SUDDEN_DEATH_SEC: float = 180.0
+const SUDDEN_DEATH_FALL_SEC: float = 0.15
+## Most junk that drops after one landing (3 rows); the rest waits.
+const MAX_JUNK_PER_LANDING: int = 18
 ## Pauses so players can see what happened: after landing, and between chain steps.
 const LAND_PAUSE_SEC: float = 0.1
 const CHAIN_STEP_SEC: float = 0.4
+const JUNK_PAUSE_SEC: float = 0.3
 
 var board: GemBoard = GemBoard.new()
 var phase: Phase = Phase.NOT_STARTED
@@ -42,17 +56,26 @@ var next_colours: Array[int] = [0, 0]
 var soft_drop: bool = false
 ## Seconds since start; drives the speed-up.
 var elapsed: float = 0.0
+## Junk the opponent has sent that hasn't dropped yet.
+var incoming: int = 0
 
 ## Seeded with the shared match seed and used only for the pair sequence, so
 ## both players (and a bot) get the same pairs.
 var _pieces_rng: RandomNumberGenerator
+## Where junk lands. This player's own; it doesn't need to match the other side.
+var _junk_rng: RandomNumberGenerator
 var _fall_timer: float = 0.0
 var _step_timer: float = 0.0
 var _chain: int = 0
+var _junk_dropped: bool = false
 
 
-func start(pieces_rng: RandomNumberGenerator) -> void:
+func start(pieces_rng: RandomNumberGenerator, junk_rng: RandomNumberGenerator = null) -> void:
 	_pieces_rng = pieces_rng
+	if junk_rng == null:
+		junk_rng = RandomNumberGenerator.new()
+		junk_rng.randomize()
+	_junk_rng = junk_rng
 	next_colours = _random_pair()
 	_spawn()
 
@@ -77,7 +100,22 @@ func tick(delta: float) -> void:
 
 func fall_interval() -> float:
 	var level: int = int(elapsed / SPEEDUP_EVERY_SEC)
-	return maxf(BASE_FALL_SEC * pow(SPEEDUP_FACTOR, level), MIN_FALL_SEC)
+	var interval: float = maxf(BASE_FALL_SEC * pow(SPEEDUP_FACTOR, level), MIN_FALL_SEC)
+	if is_sudden_death():
+		interval = minf(interval, SUDDEN_DEATH_FALL_SEC)
+	return interval
+
+
+func is_sudden_death() -> bool:
+	return elapsed >= SUDDEN_DEATH_SEC
+
+
+## The opponent attacked. The junk drops after this player's next landing.
+func add_incoming(amount: int) -> void:
+	if amount <= 0 or phase == Phase.TOPPED:
+		return
+	incoming += amount
+	incoming_changed.emit(incoming)
 
 
 ## The pair's two cells: [pivot, second gem].
@@ -144,6 +182,7 @@ func _lock() -> void:
 	board.apply_gravity()
 	phase = Phase.RESOLVING
 	_chain = 0
+	_junk_dropped = false
 	_step_timer = LAND_PAUSE_SEC
 	changed.emit()
 
@@ -157,8 +196,33 @@ func _resolve_next() -> void:
 		chain_step.emit(_chain, cleared)
 		return
 	if _chain > 0:
-		chain_finished.emit(_chain)
+		_finish_chain()
+	if incoming > 0 and not _junk_dropped:
+		_drop_incoming()
+		return
 	_spawn()
+
+
+func _finish_chain() -> void:
+	var chain: int = _chain
+	_chain = 0
+	var result: Vector2i = GemBoard.cancel_incoming(incoming, GemBoard.attack_for_chain(chain))
+	if result.x != incoming:
+		incoming = result.x
+		incoming_changed.emit(incoming)
+	chain_finished.emit(chain)
+	if result.y > 0:
+		attack_sent.emit(result.y)
+
+
+func _drop_incoming() -> void:
+	_junk_dropped = true
+	var amount: int = mini(incoming, MAX_JUNK_PER_LANDING)
+	incoming -= amount
+	board.drop_junk(amount, _junk_rng)
+	_step_timer = JUNK_PAUSE_SEC
+	changed.emit()
+	incoming_changed.emit(incoming)
 
 
 func _spawn() -> void:
