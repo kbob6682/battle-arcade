@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="GameInfo" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://core/game_info.gd" id="1_info"]
+[ext_resource type="PackedScene" path="res://games/tug_of_war/tug_of_war.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://games/tug_of_war/tug_of_war_bot.gd" id="3_bot"]
+
+[resource]
+script = ExtResource("1_info")
+id = "tug_of_war"
+display_name = "Tug of War"
+description = "Pieces slide towards the glowing middle line. Fill a whole column to clear it and push the line into your opponent's side. Run out of room and you lose!"
+scene = ExtResource("2_scene")
+modes = PackedStringArray("Classic")
+bot_script = ExtResource("3_bot")
