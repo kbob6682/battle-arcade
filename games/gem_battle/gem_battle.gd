@@ -25,7 +25,7 @@ const SWAP_MODE: String = "Swap"
 ## Size of one cell in the Swap mode next-row preview.
 const ROW_PREVIEW_CELL: float = 24.0
 const DROP_HELP: String = "Arrows or WASD: move, Up/W rotate, Down/S soft drop. Z/X or left/right click rotate either way. Space hard drop."
-const SWAP_HELP: String = "Drag a gem onto a neighbour to swap. Only swaps that make a match work. Keys: arrows/WASD move, hold Space + arrow to swap."
+const SWAP_HELP: String = "Drag a gem onto a neighbour to swap (right click cancels). Only swaps that make a match work. Keys: arrows/WASD move, hold Space + arrow to swap."
 
 var _game: GemModeGame = null
 ## Swap mode: the selected cell (mouse) or keyboard cursor.
@@ -34,6 +34,9 @@ var _cursor: Vector2i = Vector2i(2, GemBoard.HEIGHT - 3)
 var _picked: bool = false
 ## Swap mode: the mouse button is held after picking a gem.
 var _dragging: bool = false
+## Swap mode: the outline is showing (hidden after a cancel until the next
+## click or key).
+var _cursor_shown: bool = true
 var _move_dir: int = 0
 var _move_timer: float = 0.0
 var _start_msec: int = 0
@@ -160,8 +163,14 @@ func _handle_input(delta: float) -> void:
 
 
 ## Swap mode keys: a direction moves the cursor, or swaps that way while
-## gem_swap is held (the cursor follows the gem).
+## gem_swap is held (the cursor follows the gem). gem_cancel (right click)
+## drops a picked gem and hides the outline.
 func _handle_swap_keys() -> void:
+	if Input.is_action_just_pressed("gem_cancel"):
+		_picked = false
+		_dragging = false
+		_cursor_shown = false
+		_board_view.highlight = -1
 	var dir := Vector2i.ZERO
 	if Input.is_action_just_pressed("gem_left"):
 		dir = Vector2i.LEFT
@@ -228,6 +237,7 @@ func _cell_at(local: Vector2) -> Vector2i:
 
 
 func _show_cursor() -> void:
+	_cursor_shown = true
 	_board_view.highlight = _cursor.y * GemBoard.WIDTH + _cursor.x
 
 
@@ -235,7 +245,7 @@ func _redraw() -> void:
 	_board_dirty = true
 	_board_view.show_cells(_game.cells_for_view())
 	_next_view.show_cells(_game.preview_cells())
-	if _game is SwapGame:
+	if _game is SwapGame and _cursor_shown:
 		_show_cursor()
 
 

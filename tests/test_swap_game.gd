@@ -297,6 +297,8 @@ func test_swap_input_actions_exist() -> void:
 			keys.append((event as InputEventKey).physical_keycode)
 		check_eq(keys, expected[action], action)
 	check(InputMap.has_action("primary_click"), "mouse action")
+	var cancel: Array[InputEvent] = InputMap.action_get_events("gem_cancel")
+	check(cancel.size() == 1 and cancel[0] is InputEventMouseButton and (cancel[0] as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT, "right click cancels")
 
 
 func test_swap_scene_starts_and_runs_against_the_bot() -> void:
@@ -326,6 +328,14 @@ func test_swap_scene_starts_and_runs_against_the_bot() -> void:
 	game._on_board_input(click)
 	check_eq(game._cursor, Vector2i(1, GemBoard.HEIGHT - 1), "clicked gem picked")
 	check_eq(game._board_view.highlight, GemBoard.WIDTH * (GemBoard.HEIGHT - 1) + 1, "and highlighted")
+	# A right click (gem_cancel) cancels it.
+	Input.action_press("gem_cancel")
+	await get_tree().process_frame
+	Input.action_release("gem_cancel")
+	check(not game._picked, "right click cancels the pick")
+	check_eq(game._board_view.highlight, -1, "and hides the outline")
+	game._on_board_input(click)
+	check_eq(game._board_view.highlight, GemBoard.WIDTH * (GemBoard.HEIGHT - 1) + 1, "clicking again shows it")
 	for i: int in 10:
 		await get_tree().process_frame
 	check(not game.is_finished(), "still playing")
