@@ -8,7 +8,7 @@
 script = ExtResource("1_info")
 id = "tug_of_war"
 display_name = "Tug of War"
-description = "Pieces slide towards the glowing middle line. Fill a whole column to clear it and push the line into your opponent's side. Run out of room and you lose!"
+description = "Push the glowing line into your opponent's side! Classic: drop pieces and fill rows. Cannon: aim and fire pieces to fill columns. Rope: fire blocks into lanes to pull ten ropes your way."
 scene = ExtResource("2_scene")
-modes = PackedStringArray("Classic")
+modes = PackedStringArray("Classic", "Cannon", "Rope")
 bot_script = ExtResource("3_bot")

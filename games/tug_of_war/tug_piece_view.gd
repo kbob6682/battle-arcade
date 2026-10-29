@@ -1,8 +1,10 @@
 class_name TugPieceView
 extends Control
 ## Draws one Tug of War piece, centred, turned the way it appears on the
-## field. For the next-piece preview.
+## field. For the next-piece preview. upright matches Classic's upright field
+## (the piece is drawn with its axes swapped, as the field does).
 
+var upright: bool = false
 var _type: int = 0
 
 
@@ -17,6 +19,11 @@ func _draw() -> void:
 	var offsets: Array[Vector2i] = TugBoard.piece_offsets(_type, TugGame.SPAWN_ROTATION)
 	var low := Vector2i(99, 99)
 	var high := Vector2i(-99, -99)
+	if upright:
+		var swapped: Array[Vector2i] = []
+		for offset: Vector2i in offsets:
+			swapped.append(Vector2i(offset.y, offset.x))
+		offsets = swapped
 	for offset: Vector2i in offsets:
 		low = low.min(offset)
 		high = high.max(offset)

@@ -9,6 +9,12 @@ extends RefCounted
 ## side (this side grows, columns_cleared tells the game to send it). When the
 ## opponent clears, push_line() shrinks this side, pushing the stack back; a
 ## block pushed off the back, or a new piece with no room, tops out.
+##
+## Two ways of placing pieces, same rules otherwise:
+## - Travelling (Classic): the piece steps towards the line on a timer and is
+##   steered on the way.
+## - Cannon: the piece waits at the back edge to be aimed and turned, then
+##   fire() shoots it to the line. A fuse fires it automatically.
 
 signal changed
 signal piece_spawned
@@ -19,7 +25,9 @@ signal columns_cleared(count: int, depths: Array[int])
 signal line_moved(width: int)
 signal topped_out
 
-enum Phase { NOT_STARTED, FALLING, CLEARING, TOPPED }
+## FALLING means the piece is in play (travelling, or loaded in the cannon);
+## FLYING is a fired cannon piece on its way to the line.
+enum Phase { NOT_STARTED, FALLING, FLYING, CLEARING, TOPPED }
 
 ## Pieces appear turned once, so they're tall rather than deep.
 const SPAWN_ROTATION: int = 1
@@ -37,6 +45,14 @@ const SOFT_DROP_SEC: float = 0.035
 ## Pauses so players can see what happened.
 const LAND_PAUSE_SEC: float = 0.08
 const CLEAR_PAUSE_SEC: float = 0.3
+## Cannon: seconds before the fuse fires the piece, stepping up like the
+## travel speed: 5.0, 3.97, 3.16, 2.51, then 2.0 at sudden death.
+const BASE_FUSE_SEC: float = 5.0
+const SUDDEN_DEATH_FUSE_SEC: float = 2.0
+## Cannon: a fired piece moves one step this often, and the next piece loads
+## after this long.
+const FLY_STEP_SEC: float = 0.02
+const RELOAD_SEC: float = 0.25
 ## Where a turned piece may be nudged if it doesn't fit: up, down, towards
 ## the line (off the back edge), two up, two down, then back from the line.
 const KICKS: Array[Vector2i] = [
@@ -51,8 +67,10 @@ var rotation: int = 0
 ## The piece box's corner (see TugBoard.piece_cells).
 var pos: Vector2i = Vector2i.ZERO
 var next_type: int = 0
-## Held down: the piece travels fast.
+## Held down: the piece travels fast (Classic).
 var soft_drop: bool = false
+## Cannon mode: set before start().
+var cannon: bool = false
 ## Seconds since start; drives the speed-up.
 var elapsed: float = 0.0
 
@@ -62,6 +80,8 @@ var _pieces_rng: RandomNumberGenerator
 var _bag: Array[int] = []
 var _step_timer: float = 0.0
 var _pause_timer: float = 0.0
+## Cannon: seconds the current piece has been loaded.
+var _fuse_timer: float = 0.0
 
 
 func start(pieces_rng: RandomNumberGenerator) -> void:
@@ -75,6 +95,16 @@ func tick(delta: float) -> void:
 		return
 	elapsed += delta
 	match phase:
+		Phase.FALLING when cannon:
+			_fuse_timer += delta
+			if _fuse_timer >= fuse_interval():
+				fire()
+		Phase.FLYING:
+			_step_timer += delta
+			while _step_timer >= FLY_STEP_SEC and phase == Phase.FLYING:
+				_step_timer -= FLY_STEP_SEC
+				if not _try_shift(Vector2i(-1, 0)):
+					_lock()
 		Phase.FALLING:
 			_step_timer += delta
 			var interval: float = minf(SOFT_DROP_SEC, step_interval()) if soft_drop else step_interval()
@@ -91,6 +121,18 @@ func tick(delta: float) -> void:
 func step_interval() -> float:
 	var level: int = mini(int(elapsed / SPEEDUP_EVERY_SEC), SPEEDUP_STEPS)
 	return BASE_STEP_SEC * pow(SUDDEN_DEATH_STEP_SEC / BASE_STEP_SEC, float(level) / SPEEDUP_STEPS)
+
+
+func fuse_interval() -> float:
+	var level: int = mini(int(elapsed / SPEEDUP_EVERY_SEC), SPEEDUP_STEPS)
+	return BASE_FUSE_SEC * pow(SUDDEN_DEATH_FUSE_SEC / BASE_FUSE_SEC, float(level) / SPEEDUP_STEPS)
+
+
+## Cannon: how much of the fuse is left, 1 (just loaded) to 0.
+func fuse_left() -> float:
+	if not cannon or phase != Phase.FALLING:
+		return 0.0
+	return clampf(1.0 - _fuse_timer / fuse_interval(), 0.0, 1.0)
 
 
 func is_sudden_death() -> bool:
@@ -133,12 +175,33 @@ func rotate(dir: int) -> bool:
 	return false
 
 
+## Classic: drops straight to the line. Cannon: fires.
 func hard_drop() -> void:
 	if phase != Phase.FALLING:
+		return
+	if cannon:
+		fire()
 		return
 	while _try_shift(Vector2i(-1, 0)):
 		pass
 	_lock()
+
+
+## Cannon: shoots the loaded piece at the line.
+func fire() -> void:
+	if phase != Phase.FALLING:
+		return
+	phase = Phase.FLYING
+	_step_timer = 0.0
+	changed.emit()
+
+
+## Moves the piece towards row (for aiming with the mouse) until it gets
+## there or something is in the way.
+func aim_at(row: int) -> void:
+	var dir: int = signi(row - pos.y)
+	while pos.y != row and move(dir):
+		pass
 
 
 ## The opponent cleared n columns: the line moves n steps into this side.
@@ -147,7 +210,7 @@ func push_line(n: int) -> void:
 		return
 	var ok: bool = board.shrink(n)
 	line_moved.emit(board.width)
-	if ok and phase == Phase.FALLING:
+	if ok and (phase == Phase.FALLING or phase == Phase.FLYING):
 		# The piece moves with the line; if it's now past the back edge, it
 		# slides towards the line until it fits.
 		while not board.fits(piece_cells()):
@@ -168,7 +231,7 @@ func push_line(n: int) -> void:
 ## The board with the travelling piece drawn in, for the view and snapshots.
 func cells_with_piece() -> PackedInt32Array:
 	var values: PackedInt32Array = board.cells.duplicate()
-	if phase == Phase.FALLING:
+	if phase == Phase.FALLING or phase == Phase.FLYING:
 		for cell: Vector2i in piece_cells():
 			if board.in_bounds(cell.x, cell.y):
 				values[cell.x * TugBoard.ROWS + cell.y] = piece_type
@@ -187,7 +250,7 @@ func _lock() -> void:
 	for cell: Vector2i in piece_cells():
 		board.set_cell(cell.x, cell.y, piece_type)
 	phase = Phase.CLEARING
-	_pause_timer = LAND_PAUSE_SEC
+	_pause_timer = RELOAD_SEC if cannon else LAND_PAUSE_SEC
 	var full: Array[int] = board.full_columns()
 	if not full.is_empty():
 		columns_cleared.emit(full.size(), full)
@@ -203,6 +266,7 @@ func _spawn() -> void:
 	next_type = _take_from_bag()
 	rotation = SPAWN_ROTATION
 	_step_timer = 0.0
+	_fuse_timer = 0.0
 	# The piece's furthest-back cell starts at the back edge.
 	var min_x: int = 99
 	for offset: Vector2i in TugBoard.piece_offsets(piece_type, rotation):
