@@ -46,10 +46,11 @@ const SOFT_DROP_SEC: float = 0.035
 ## Pauses so players can see what happened.
 const LAND_PAUSE_SEC: float = 0.08
 const CLEAR_PAUSE_SEC: float = 0.3
-## Cannon: seconds before the fuse fires the piece, stepping up like the
-## travel speed: 5.0, 3.97, 3.16, 2.51, then 2.0 at sudden death.
-const BASE_FUSE_SEC: float = 5.0
-const SUDDEN_DEATH_FUSE_SEC: float = 2.0
+## Cannon: seconds before the fuse fires the piece, stepping down every
+## SPEEDUP_EVERY_SEC like the travel speed: 10.0, 7.7, 5.9, 4.6, then 3.5
+## from sudden death on.
+const BASE_FUSE_SEC: float = 10.0
+const SUDDEN_DEATH_FUSE_SEC: float = 3.5
 ## Cannon: a fired piece moves one step this often, and the next piece loads
 ## after this long.
 const FLY_STEP_SEC: float = 0.02
