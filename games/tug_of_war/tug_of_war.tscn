@@ -1,0 +1,134 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://games/tug_of_war/tug_of_war.gd" id="1_tug"]
+[ext_resource type="Script" path="res://games/tug_of_war/tug_field_view.gd" id="2_field"]
+[ext_resource type="Script" path="res://games/tug_of_war/tug_piece_view.gd" id="3_piece"]
+
+[node name="TugOfWar" type="Node"]
+script = ExtResource("1_tug")
+
+[node name="UI" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="ColorRect" parent="UI"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.11, 0.12, 0.18, 1)
+
+[node name="Margin" type="MarginContainer" parent="UI"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="Column" type="VBoxContainer" parent="UI/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Names" type="HBoxContainer" parent="UI/Margin/Column"]
+layout_mode = 2
+
+[node name="Mine" type="VBoxContainer" parent="UI/Margin/Column/Names"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MyName" type="Label" parent="UI/Margin/Column/Names/Mine"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+
+[node name="MyCleared" type="Label" parent="UI/Margin/Column/Names/Mine"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Columns: 0"
+
+[node name="Middle" type="VBoxContainer" parent="UI/Margin/Column/Names"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LineLabel" type="Label" parent="UI/Margin/Column/Names/Middle"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.92, 0.45, 1)
+theme_override_font_sizes/font_size = 20
+text = "Even"
+horizontal_alignment = 1
+
+[node name="SuddenDeathLabel" type="Label" parent="UI/Margin/Column/Names/Middle"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.35, 0.3, 1)
+theme_override_font_sizes/font_size = 18
+text = "SUDDEN DEATH!"
+horizontal_alignment = 1
+
+[node name="Theirs" type="VBoxContainer" parent="UI/Margin/Column/Names"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TheirName" type="Label" parent="UI/Margin/Column/Names/Theirs"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 2
+
+[node name="TheirCleared" type="Label" parent="UI/Margin/Column/Names/Theirs"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Columns: 0"
+horizontal_alignment = 2
+
+[node name="Play" type="HBoxContainer" parent="UI/Margin/Column"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="Field" type="Control" parent="UI/Margin/Column/Play"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(600, 300)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("2_field")
+
+[node name="Side" type="VBoxContainer" parent="UI/Margin/Column/Play"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NextTitle" type="Label" parent="UI/Margin/Column/Play/Side"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Next"
+horizontal_alignment = 1
+
+[node name="NextView" type="Control" parent="UI/Margin/Column/Play/Side"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+size_flags_horizontal = 4
+script = ExtResource("3_piece")
+
+[node name="Status" type="Label" parent="UI/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+autowrap_mode = 3
