@@ -12,7 +12,8 @@ class Settings:
 	var think_sec: float = 1.0
 	## Also try the next piece (Hard).
 	var lookahead: bool = false
-	## Chance of putting a piece somewhere random instead.
+	## Chance of a slip-up: one of the MISTAKE_POOL best places at random
+	## instead of the best (a random place anywhere wrecks the side too fast).
 	var mistake_chance: float = 0.0
 
 	func _init(think: float, look: bool, mistakes: float) -> void:
@@ -46,6 +47,8 @@ const TOPPED_SCORE: float = -1000000.0
 const LOOKAHEAD_DISCOUNT: float = 0.9
 ## Hard tries the next piece only on top of this many of its best options.
 const LOOKAHEAD_WIDTH: int = 6
+## A slip-up picks from this many of the best places.
+const MISTAKE_POOL: int = 6
 
 
 static func settings_for(difficulty: BotOpponent.Difficulty) -> Settings:
@@ -73,13 +76,14 @@ class Search:
 		done = true
 		if options.is_empty():
 			return
-		if rng.randf() < settings.mistake_chance:
-			best = options[rng.randi_range(0, options.size() - 1)]
-			return
+		var slip: bool = rng.randf() < settings.mistake_chance
 		for option: Placement in options:
 			option.score = TugPlanner.evaluate(option)
 		options.sort_custom(func(a: Placement, b: Placement) -> bool: return a.score > b.score)
 		best = options[0]
+		if slip:
+			best = options[rng.randi_range(0, mini(TugPlanner.MISTAKE_POOL, options.size()) - 1)]
+			return
 		if settings.lookahead:
 			_options = options.slice(0, TugPlanner.LOOKAHEAD_WIDTH)
 			_next_type = next_type

@@ -230,6 +230,7 @@ func test_cannon_fuse_fires_by_itself() -> void:
 	game.tick(TugGame.BASE_FUSE_SEC + 0.01)
 	check_eq(game.phase, TugGame.Phase.FLYING, "the fuse fired it")
 	game.tick(1.0)
+	game.tick(TugGame.RELOAD_SEC + 0.01)
 	check_eq(game.phase, TugGame.Phase.FALLING, "next piece loaded")
 	check(game.board.cells.count(first) >= 4, "the first piece is on the board")
 	game.elapsed = TugGame.SUDDEN_DEATH_SEC
