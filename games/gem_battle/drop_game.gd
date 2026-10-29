@@ -1,9 +1,8 @@
 class_name DropGame
-extends RefCounted
+extends GemModeGame
 ## Drop mode for one board: the falling pair, its moves, landing, chains,
-## attacks and incoming junk, and the speed-up. Plain logic driven by tick(),
-## so the player's game and the bots run exactly the same rules, and tests can
-## step it with fixed times.
+## attacks and incoming junk, and the speed-up. Shared signals and fields are
+## in GemModeGame.
 ##
 ## Junk: attacks from the opponent wait in `incoming`. When a pair lands, its
 ## chain first cancels incoming junk (blocking) and sends the rest as an
@@ -12,19 +11,7 @@ extends RefCounted
 ## The pair is a pivot gem plus a second gem on one side of it. Rotating moves
 ## the second gem round the pivot, nudging the pair off walls and stacks.
 
-signal changed
 signal piece_spawned
-## A chain step cleared some gems. chain counts from 1; groups are the cell
-## indexes cleared (now empty) and colours each group's colour, for effects.
-signal chain_step(chain: int, groups: Array[PackedInt32Array], colours: Array[int])
-## Incoming junk just landed on the board.
-signal junk_dropped(amount: int)
-## The chain that started when the last pair landed is over.
-signal chain_finished(chain: int)
-## Junk to send to the opponent, after blocking.
-signal attack_sent(amount: int)
-signal incoming_changed(amount: int)
-signal topped_out
 
 enum Phase { NOT_STARTED, FALLING, RESOLVING, TOPPED }
 
@@ -48,7 +35,6 @@ const LAND_PAUSE_SEC: float = 0.1
 const CHAIN_STEP_SEC: float = 0.4
 const JUNK_PAUSE_SEC: float = 0.3
 
-var board: GemBoard = GemBoard.new()
 var phase: Phase = Phase.NOT_STARTED
 var pivot: Vector2i = SPAWN
 var rotation: int = 0
@@ -57,10 +43,6 @@ var piece_colours: Array[int] = [0, 0]
 var next_colours: Array[int] = [0, 0]
 ## Held down: the pair falls fast.
 var soft_drop: bool = false
-## Seconds since start; drives the speed-up.
-var elapsed: float = 0.0
-## Junk the opponent has sent that hasn't dropped yet.
-var incoming: int = 0
 
 ## Seeded with the shared match seed and used only for the pair sequence, so
 ## both players (and a bot) get the same pairs.
@@ -77,10 +59,7 @@ var _junk_dropped: bool = false
 
 func start(pieces_rng: RandomNumberGenerator, junk_rng: RandomNumberGenerator = null) -> void:
 	_pieces_rng = pieces_rng
-	if junk_rng == null:
-		junk_rng = RandomNumberGenerator.new()
-		junk_rng.randomize()
-	_junk_rng = junk_rng
+	_junk_rng = _own_rng(junk_rng)
 	next_colours = _random_pair()
 	_spawn()
 
@@ -112,12 +91,19 @@ func is_sudden_death() -> bool:
 	return elapsed >= SUDDEN_DEATH_SEC
 
 
-## The opponent attacked. The junk drops after this player's next landing.
-func add_incoming(amount: int) -> void:
-	if amount <= 0 or phase == Phase.TOPPED:
-		return
-	incoming += amount
-	incoming_changed.emit(incoming)
+func is_topped() -> bool:
+	return phase == Phase.TOPPED
+
+
+## The board with the falling pair drawn in. Incoming junk drops after this
+## player's next landing.
+func cells_for_view() -> PackedInt32Array:
+	return cells_with_piece()
+
+
+## The next pair as it will appear: second gem on top.
+func preview_cells() -> PackedInt32Array:
+	return PackedInt32Array([next_colours[1], next_colours[0]])
 
 
 ## The pair's two cells: [pivot, second gem].
@@ -218,13 +204,8 @@ func _finish_chain() -> void:
 	_chain = 0
 	var attack: int = GemBoard.attack_for(chain, _chain_extra_gems)
 	_chain_extra_gems = 0
-	var result: Vector2i = GemBoard.cancel_incoming(incoming, attack)
-	if result.x != incoming:
-		incoming = result.x
-		incoming_changed.emit(incoming)
 	chain_finished.emit(chain)
-	if result.y > 0:
-		attack_sent.emit(result.y)
+	_block_and_attack(attack)
 
 
 func _drop_incoming() -> void:

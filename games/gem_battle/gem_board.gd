@@ -147,6 +147,38 @@ func find_groups() -> Array[PackedInt32Array]:
 	return groups
 
 
+## Whether the gem at cell is part of a group of MIN_GROUP or more. Quicker
+## than find_groups when only one place can have changed (a swap).
+func has_group_at(cell: Vector2i) -> bool:
+	var start: int = cell.y * WIDTH + cell.x
+	var colour: int = cells[start]
+	if not is_gem(colour):
+		return false
+	var seen: Dictionary[int, bool] = {start: true}
+	var stack: Array[int] = [start]
+	while not stack.is_empty():
+		for next: int in _neighbours(stack.pop_back()):
+			if cells[next] == colour and not seen.has(next):
+				seen[next] = true
+				if seen.size() >= MIN_GROUP:
+					return true
+				stack.append(next)
+	return false
+
+
+## Swap mode: pushes everything up one row and puts row in at the bottom.
+## Returns false, changing nothing, if a gem or junk is in the top row.
+func push_row(row: PackedInt32Array) -> bool:
+	for x: int in WIDTH:
+		if cells[x] != EMPTY:
+			return false
+	for i: int in range(WIDTH, cells.size()):
+		cells[i - WIDTH] = cells[i]
+	for x: int in WIDTH:
+		cells[(HEIGHT - 1) * WIDTH + x] = row[x]
+	return true
+
+
 ## Removes the groups, plus any junk touching them. Returns how many gems
 ## (not junk) were cleared.
 func clear_groups(groups: Array[PackedInt32Array]) -> int:
@@ -191,7 +223,7 @@ func drop_junk(count: int, rng: RandomNumberGenerator) -> int:
 		for x: int in WIDTH:
 			columns.append(x)
 		if count < WIDTH:
-			_shuffle(columns, rng)
+			shuffle(columns, rng)
 			columns.resize(count)
 		for x: int in columns:
 			var height: int = column_height(x)
@@ -228,7 +260,7 @@ func _neighbours(index: int) -> PackedInt32Array:
 
 
 ## Fisher-Yates with the given RNG, so the order is reproducible from its seed.
-static func _shuffle(items: Array[int], rng: RandomNumberGenerator) -> void:
+static func shuffle(items: Array[int], rng: RandomNumberGenerator) -> void:
 	for i: int in range(items.size() - 1, 0, -1):
 		var j: int = rng.randi_range(0, i)
 		var held: int = items[i]

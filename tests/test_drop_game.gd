@@ -113,9 +113,9 @@ func test_bot_tops_out_under_junk_and_says_so() -> void:
 		if bot._game.incoming == 0:
 			bot._game.add_incoming(GemBoard.MAX_ATTACK)
 		bot._process(0.05)
-		if bot._game.phase == DropGame.Phase.TOPPED:
+		if bot._game.is_topped():
 			break
-	check_eq(bot._game.phase, DropGame.Phase.TOPPED, "tops out under constant junk")
+	check(bot._game.is_topped(), "tops out under constant junk")
 	await get_tree().process_frame
 	check(got.has(GemBattle.Kind.BOARD), "sent board snapshots")
 	check_eq(got.back(), GemBattle.Kind.TOPPED, "TOPPED is the last message")
@@ -142,7 +142,7 @@ func test_scene_starts_and_runs_against_the_bot() -> void:
 	bot.start_match(99, "Drop")
 	for i: int in 10:
 		await get_tree().process_frame
-	game._game.hard_drop()
+	(game._game as DropGame).hard_drop()
 	for i: int in 10:
 		await get_tree().process_frame
 	check(not game.is_finished(), "still playing")

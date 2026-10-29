@@ -8,7 +8,7 @@
 script = ExtResource("1_info")
 id = "gem_battle"
 display_name = "Gem Battle"
-description = "Match 3 or more gems of a colour. Chains clear more! Don't let your board fill to the top."
+description = "Match 3 or more gems of a colour. Chains clear more! Drop: steer falling pairs. Swap: swap gems as rows rise. Don't let your board fill to the top."
 scene = ExtResource("2_scene")
-modes = PackedStringArray("Drop")
+modes = PackedStringArray("Drop", "Swap")
 bot_script = ExtResource("3_bot")
