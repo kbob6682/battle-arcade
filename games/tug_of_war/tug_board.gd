@@ -7,11 +7,16 @@ extends RefCounted
 ## Cells are addressed by depth d (0 is next to the middle line, width - 1 is
 ## the back edge) and row r (0 is the top). Pieces travel towards the line,
 ## so "falling" means d getting smaller. Each side's width changes as the line
-## moves; the two widths always add up to TOTAL_WIDTH.
+## moves; the two widths always add up to total_width.
+##
+## Field sizes differ by mode: the constants are Classic's (and Rope's lanes);
+## Cannon's field is bigger (CANNON_*), so the line has further to go.
 
 const ROWS: int = 10
 const TOTAL_WIDTH: int = 20
 const START_WIDTH: int = 10
+const CANNON_ROWS: int = 12
+const CANNON_TOTAL_WIDTH: int = 32
 const EMPTY: int = 0
 ## Piece types are 1 to PIECE_TYPES (I, O, T, S, Z, J, L).
 const PIECE_TYPES: int = 7
@@ -31,13 +36,25 @@ const SHAPES: Array[Array] = [
 const BOX_SIZES: Array[int] = [4, 2, 3, 3, 3, 3, 3]
 
 var width: int = START_WIDTH
-## Depth-major: index = d * ROWS + r.
+## Cells across a line (a full one clears), and both sides' widths together.
+var rows: int = ROWS
+var total_width: int = TOTAL_WIDTH
+## Depth-major: index = d * rows + r.
 var cells: PackedInt32Array = PackedInt32Array()
 
 
-func _init(start_width: int = START_WIDTH) -> void:
-	width = start_width
-	cells.resize(width * ROWS)
+## A side starting at half the field. Defaults are Classic's field.
+func _init(row_count: int = ROWS, total: int = TOTAL_WIDTH, start_width: int = -1) -> void:
+	rows = row_count
+	total_width = total
+	@warning_ignore("integer_division")
+	width = total / 2 if start_width < 0 else start_width
+	cells.resize(width * rows)
+
+
+## Cannon mode's bigger field.
+static func cannon_board() -> TugBoard:
+	return TugBoard.new(CANNON_ROWS, CANNON_TOTAL_WIDTH)
 
 
 ## A piece's cells in its box after turning it clockwise `rotation` times
@@ -62,12 +79,12 @@ static func piece_cells(type: int, rotation: int, pos: Vector2i) -> Array[Vector
 	return result
 
 
-## Rebuilds a side from encode() output (the opponent's snapshot). Returns
-## null if it isn't valid (it's untrusted input).
-static func decode(text: String, side_width: int) -> TugBoard:
-	if side_width < 0 or side_width > TOTAL_WIDTH or text.length() != side_width * ROWS:
+## Rebuilds a side from encode_cells() output (the opponent's snapshot) for a
+## field of this size. Returns null if it isn't valid (it's untrusted input).
+static func decode(text: String, side_width: int, row_count: int = ROWS, total: int = TOTAL_WIDTH) -> TugBoard:
+	if side_width < 0 or side_width > total or text.length() != side_width * row_count:
 		return null
-	var board := TugBoard.new(side_width)
+	var board := TugBoard.new(row_count, total, side_width)
 	for i: int in text.length():
 		var value: int = text.unicode_at(i) - 48 # "0"
 		if value < EMPTY or value > PIECE_TYPES:
@@ -83,16 +100,22 @@ static func encode_cells(values: PackedInt32Array) -> String:
 	return "".join(parts)
 
 
+## Where the line starts: half the field each.
+func start_width() -> int:
+	@warning_ignore("integer_division")
+	return total_width / 2
+
+
 func in_bounds(d: int, r: int) -> bool:
-	return d >= 0 and d < width and r >= 0 and r < ROWS
+	return d >= 0 and d < width and r >= 0 and r < rows
 
 
 func get_cell(d: int, r: int) -> int:
-	return cells[d * ROWS + r]
+	return cells[d * rows + r]
 
 
 func set_cell(d: int, r: int, value: int) -> void:
-	cells[d * ROWS + r] = value
+	cells[d * rows + r] = value
 
 
 func is_free(cell: Vector2i) -> bool:
@@ -107,17 +130,17 @@ func fits(cells_to_check: Array[Vector2i]) -> bool:
 
 
 func copy() -> TugBoard:
-	var board := TugBoard.new(width)
+	var board := TugBoard.new(rows, total_width, width)
 	board.cells = cells.duplicate()
 	return board
 
 
-## Depths whose column is full from top to bottom, nearest the line first.
+## Depths whose line is full from end to end, nearest the middle line first.
 func full_columns() -> Array[int]:
 	var result: Array[int] = []
 	for d: int in width:
 		var full: bool = true
-		for r: int in ROWS:
+		for r: int in rows:
 			if get_cell(d, r) == EMPTY:
 				full = false
 				break
@@ -126,41 +149,41 @@ func full_columns() -> Array[int]:
 	return result
 
 
-## Removes the columns at these depths; everything behind them moves up
-## towards the line, and empty columns fill in at the back.
+## Removes the lines at these depths; everything behind them moves up
+## towards the middle line, and empty lines fill in at the back.
 func clear_columns(depths: Array[int]) -> void:
 	var sorted: Array[int] = depths.duplicate()
 	sorted.sort()
 	sorted.reverse()
 	for d: int in sorted:
-		cells = cells.slice(0, d * ROWS) + cells.slice((d + 1) * ROWS)
+		cells = cells.slice(0, d * rows) + cells.slice((d + 1) * rows)
 	var empty: PackedInt32Array = PackedInt32Array()
-	empty.resize(sorted.size() * ROWS)
+	empty.resize(sorted.size() * rows)
 	cells.append_array(empty)
 
 
-## The line moved away: n more empty columns at the back (never past the
+## The line moved away: n more empty lines at the back (never past the
 ## whole field).
 func grow(n: int) -> void:
-	var added: int = clampi(n, 0, TOTAL_WIDTH - width)
+	var added: int = clampi(n, 0, total_width - width)
 	width += added
-	cells.resize(width * ROWS)
+	cells.resize(width * rows)
 
 
-## The line moved into this side by n: the back n columns go. Returns false
+## The line moved into this side by n: the back n lines go. Returns false
 ## if any of them had blocks in (pushed off the back: this side has lost).
 func shrink(n: int) -> bool:
 	var removed: int = clampi(n, 0, width)
 	var ok: bool = removed == n
-	for i: int in range((width - removed) * ROWS, width * ROWS):
+	for i: int in range((width - removed) * rows, width * rows):
 		if cells[i] != EMPTY:
 			ok = false
 	width -= removed
-	cells.resize(width * ROWS)
+	cells.resize(width * rows)
 	return ok
 
 
-## How far the stack in row r reaches from the line (0 if the row is empty).
+## How far the stack in row r reaches from the middle line (0 if empty).
 func row_depth(r: int) -> int:
 	for d: int in range(width - 1, -1, -1):
 		if get_cell(d, r) != EMPTY:

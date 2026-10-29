@@ -36,6 +36,10 @@ var upright: bool = false:
 ## Cannon: how much of the fuse is left (0 to 1); below 0 hides the bar.
 var fuse: float = -1.0
 
+## The field's size: cells across a line, and both sides together.
+var rows: int = TugBoard.ROWS
+var total_width: int = TugBoard.TOTAL_WIDTH
+
 var _my_width: int = TugBoard.START_WIDTH
 ## Depth-major cells (see TugBoard).
 var _my_cells: PackedInt32Array = PackedInt32Array()
@@ -78,7 +82,7 @@ func screen_cell(mine: bool, d: int, r: int) -> Vector2i:
 
 ## Grid size on screen: columns and rows.
 func grid_size() -> Vector2i:
-	return Vector2i(TugBoard.ROWS, TugBoard.TOTAL_WIDTH) if upright else Vector2i(TugBoard.TOTAL_WIDTH, TugBoard.ROWS)
+	return Vector2i(rows, total_width) if upright else Vector2i(total_width, rows)
 
 
 ## The row (TugBoard r) under a point in this control, for aiming with the
@@ -89,7 +93,7 @@ func row_at(local: Vector2) -> int:
 		return -1
 	var at: Vector2 = (local - _origin()) / cell
 	var r: int = floori(at.x if upright else at.y)
-	return r if r >= 0 and r < TugBoard.ROWS else -1
+	return r if r >= 0 and r < rows else -1
 
 func shake(strength: float) -> void:
 	_shake = maxf(_shake, strength)
@@ -102,7 +106,7 @@ func cell_size() -> float:
 
 ## Centre of the middle line, for effects.
 func line_centre() -> Vector2:
-	var along: Vector2 = Vector2(TugBoard.ROWS / 2.0, _my_width) if upright else Vector2(_my_width, TugBoard.ROWS / 2.0)
+	var along: Vector2 = Vector2(rows / 2.0, _my_width) if upright else Vector2(_my_width, rows / 2.0)
 	return _origin() + along * cell_size()
 
 
@@ -131,7 +135,6 @@ func _draw() -> void:
 	var origin: Vector2 = _origin()
 	if _shake > 0.0:
 		origin += Vector2(_shake_rng.randf_range(-_shake, _shake), _shake_rng.randf_range(-_shake, _shake))
-	var rows: int = TugBoard.ROWS
 	var grid: Vector2i = grid_size()
 	# Backgrounds: my side runs from the far edge to the line.
 	var my_extent: Vector2 = Vector2(rows, _my_width) if upright else Vector2(_my_width, rows)
@@ -149,7 +152,7 @@ func _draw() -> void:
 		draw_rect(_cell_rect(origin, screen_cell(true, ghost_cell.x, ghost_cell.y)).grow(-cell * 0.1), GHOST_COLOUR, false, maxf(cell * 0.06, 1.5))
 	# Theirs, mirrored. If a snapshot lags behind the line, only what fits on
 	# their side is drawn.
-	var their_room: int = TugBoard.TOTAL_WIDTH - _my_width
+	var their_room: int = total_width - _my_width
 	for i: int in mini(_their_cells.size(), _their_width * rows):
 		@warning_ignore("integer_division")
 		var d: int = i / rows
@@ -174,7 +177,7 @@ func _draw() -> void:
 
 ## The middle line: a bright bar with a soft, pulsing glow.
 func _draw_line(origin: Vector2, cell: float) -> void:
-	var length: float = TugBoard.ROWS * cell
+	var length: float = rows * cell
 	var at: float = _my_width * cell
 	var pulse: float = 0.5 + 0.5 * sin(_time * 4.0)
 	for k: int in 4:

@@ -205,6 +205,45 @@ func cannon_game(seed_value: int = 42) -> TugGame:
 	return game
 
 
+func test_cannon_has_the_bigger_field() -> void:
+	var game: TugGame = cannon_game()
+	check_eq(game.board.rows, TugBoard.CANNON_ROWS, "12 rows")
+	check_eq(game.board.total_width, TugBoard.CANNON_TOTAL_WIDTH, "32 across")
+	check_eq(game.board.width, TugBoard.CANNON_TOTAL_WIDTH / 2, "16 each to start")
+	var deepest: int = 0
+	for cell: Vector2i in game.piece_cells():
+		deepest = maxi(deepest, cell.x)
+	check_eq(deepest, game.board.width - 1, "loads at the back edge")
+	# A full 12-cell column clears and moves the line.
+	var landing: Array[Vector2i] = game.landing_cells()
+	for r: int in game.board.rows:
+		var gap: bool = false
+		for cell: Vector2i in landing:
+			if cell.x == 0 and cell.y == r:
+				gap = true
+		if not gap:
+			game.board.set_cell(0, r, 3)
+	game.fire()
+	game.tick(1.0)
+	check_eq(game.board.width, TugBoard.CANNON_TOTAL_WIDTH / 2 + 1, "the line moved")
+	# Snapshots of this size round-trip, and Classic's size is rejected.
+	var text: String = TugBoard.encode_cells(game.board.cells)
+	check(TugBoard.decode(text, game.board.width, TugBoard.CANNON_ROWS, TugBoard.CANNON_TOTAL_WIDTH) != null, "snapshot round trip")
+	check(TugBoard.decode(text, game.board.width) == null, "wrong field size rejected")
+
+
+func test_cannon_bot_and_player_agree_on_the_bigger_field() -> void:
+	var player_side: TugGame = cannon_game(8)
+	var bot: TugOfWarBot = GameRegistry.find("tug_of_war").create_bot(BotOpponent.Difficulty.MEDIUM) as TugOfWarBot
+	bot.begin_match(1)
+	bot.start_match(8, "Cannon")
+	check_eq(bot._game.board.total_width, TugBoard.CANNON_TOTAL_WIDTH, "bot plays the bigger field")
+	bot._on_player_message(TugOfWar.Kind.CLEAR, {"n": 2})
+	player_side.board.grow(2)
+	check_eq(player_side.board.width + bot._game.board.width, TugBoard.CANNON_TOTAL_WIDTH, "widths add up")
+	bot.free()
+
+
 func test_cannon_waits_at_the_back_until_fired() -> void:
 	var game: TugGame = cannon_game()
 	var start: Vector2i = game.pos
@@ -245,8 +284,10 @@ func test_aim_at_follows_the_mouse_row() -> void:
 		top = mini(top, cell.y)
 	check_eq(top, 0, "aimed at the top row")
 	game.aim_at(50)
+	var bottom: int = 0
 	for cell: Vector2i in game.piece_cells():
-		check(cell.y < TugBoard.ROWS, "stops at the bottom")
+		bottom = maxi(bottom, cell.y)
+	check_eq(bottom, game.board.rows - 1, "stops at the bottom row")
 
 
 func test_rope_shots_pull_lanes() -> void:
@@ -396,6 +437,8 @@ func test_cannon_scene_runs_sideways() -> void:
 	game.start_game(5, bot, "Cannon", true, player)
 	bot.start_match(5, "Cannon")
 	check(game._game.cannon and not game._field.upright, "Cannon is sideways")
+	check_eq(game._field.total_width, TugBoard.CANNON_TOTAL_WIDTH, "view uses the bigger field")
+	check_eq(game._field.rows, TugBoard.CANNON_ROWS, "and its rows")
 	game._game.fire()
 	for i: int in 30:
 		await get_tree().process_frame

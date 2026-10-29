@@ -31,7 +31,8 @@ enum Phase { NOT_STARTED, FALLING, FLYING, CLEARING, TOPPED }
 
 ## Pieces appear turned once, so they're tall rather than deep.
 const SPAWN_ROTATION: int = 1
-## Top row of a new piece's box, so a tall piece is roughly centred.
+## Top row of a new piece's box on Classic's field (and Rope's lanes), so a
+## tall piece is roughly centred. See spawn_row_for.
 const SPAWN_ROW: int = 3
 ## Seconds per step towards the line. Steps up every SPEEDUP_EVERY_SEC by the
 ## same factor, reaching the sudden-death speed after SPEEDUP_STEPS (3:00):
@@ -69,7 +70,7 @@ var pos: Vector2i = Vector2i.ZERO
 var next_type: int = 0
 ## Held down: the piece travels fast (Classic).
 var soft_drop: bool = false
-## Cannon mode: set before start().
+## Cannon mode, on its bigger field: set before start().
 var cannon: bool = false
 ## Seconds since start; drives the speed-up.
 var elapsed: float = 0.0
@@ -84,8 +85,16 @@ var _pause_timer: float = 0.0
 var _fuse_timer: float = 0.0
 
 
+## Top row of a new piece's box on a field this many rows tall.
+static func spawn_row_for(rows: int) -> int:
+	@warning_ignore("integer_division")
+	return rows / 2 - 2
+
+
 func start(pieces_rng: RandomNumberGenerator) -> void:
 	_pieces_rng = pieces_rng
+	if cannon:
+		board = TugBoard.cannon_board()
 	next_type = _take_from_bag()
 	_spawn()
 
@@ -234,7 +243,7 @@ func cells_with_piece() -> PackedInt32Array:
 	if phase == Phase.FALLING or phase == Phase.FLYING:
 		for cell: Vector2i in piece_cells():
 			if board.in_bounds(cell.x, cell.y):
-				values[cell.x * TugBoard.ROWS + cell.y] = piece_type
+				values[cell.x * board.rows + cell.y] = piece_type
 	return values
 
 
@@ -271,7 +280,7 @@ func _spawn() -> void:
 	var min_x: int = 99
 	for offset: Vector2i in TugBoard.piece_offsets(piece_type, rotation):
 		min_x = mini(min_x, offset.x)
-	pos = Vector2i(board.width - 1 + min_x, SPAWN_ROW)
+	pos = Vector2i(board.width - 1 + min_x, spawn_row_for(board.rows))
 	if not board.fits(piece_cells()):
 		_top_out()
 		return

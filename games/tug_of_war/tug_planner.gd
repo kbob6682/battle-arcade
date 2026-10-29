@@ -123,7 +123,7 @@ static func placements(board: TugBoard, type: int) -> Array[Placement]:
 		var min_x: int = 99
 		for offset: Vector2i in offsets:
 			min_x = mini(min_x, offset.x)
-		for row: int in range(-3, TugBoard.ROWS):
+		for row: int in range(-3, board.rows):
 			var pos := Vector2i(board.width - 1 + min_x, row)
 			if not board.fits(TugBoard.piece_cells(type, rotation, pos)):
 				continue
@@ -147,13 +147,14 @@ static func placements(board: TugBoard, type: int) -> Array[Placement]:
 static func evaluate(placement: Placement) -> float:
 	var b: TugBoard = placement.board
 	# The next piece appears in the middle rows at the back edge.
-	for r: int in range(TugGame.SPAWN_ROW, TugGame.SPAWN_ROW + 4):
+	var spawn_row: int = TugGame.spawn_row_for(b.rows)
+	for r: int in range(spawn_row, spawn_row + 4):
 		for d: int in range(maxi(b.width - 2, 0), b.width):
 			if b.get_cell(d, r) != TugBoard.EMPTY:
 				return TOPPED_SCORE
 	var score: float = placement.cleared * CLEAR_WEIGHT
 	var previous: int = -1
-	for r: int in TugBoard.ROWS:
+	for r: int in b.rows:
 		var depth: int = b.row_depth(r)
 		score -= depth * DEPTH_WEIGHT
 		for d: int in depth:

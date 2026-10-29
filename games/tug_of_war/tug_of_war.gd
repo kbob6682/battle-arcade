@@ -118,7 +118,9 @@ func _start() -> void:
 	_game.topped_out.connect(_on_topped_out)
 	# rng is seeded with the shared match seed, so both players get the same pieces.
 	_game.start(rng)
-	_field.show_theirs(TugBoard.TOTAL_WIDTH - _game.board.width, PackedInt32Array())
+	_field.rows = _game.board.rows
+	_field.total_width = _game.board.total_width
+	_field.show_theirs(_game.board.total_width - _game.board.width, PackedInt32Array())
 	_show_line()
 
 
@@ -299,7 +301,7 @@ func _finish_rope_if_both_done() -> void:
 
 ## Where the line is: how many steps it has moved your way or theirs.
 func _show_line() -> void:
-	var ahead: int = _game.board.width - TugBoard.START_WIDTH
+	var ahead: int = _game.board.width - _game.board.start_width()
 	if ahead > 0:
 		_line_label.text = "You're winning by %d" % ahead
 	elif ahead < 0:
@@ -341,7 +343,7 @@ func _on_opponent_message(kind: int, data: Dictionary) -> void:
 			var width: Variant = data.get("w")
 			if typeof(width) != TYPE_INT:
 				return
-			var their_board: TugBoard = TugBoard.decode(str(data.get("b", "")), width)
+			var their_board: TugBoard = TugBoard.decode(str(data.get("b", "")), width, _game.board.rows, _game.board.total_width)
 			if their_board != null:
 				_field.show_theirs(their_board.width, their_board.cells)
 		Kind.TOPPED:
