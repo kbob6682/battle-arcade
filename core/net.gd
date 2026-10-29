@@ -68,6 +68,12 @@ var _waiting_on_peer: bool = false
 var _watch: LinkWatch = LinkWatch.new()
 var link_status: LinkWatch.Status = LinkWatch.Status.OK
 var _since_heartbeat_sec: float = 0.0
+## Connection diagnostics: when _start_rtc ran, the last ICE gathering state,
+## and how many ICE candidates of each kind went each way (see describe_candidate).
+var _rtc_started_msec: int = 0
+var _last_gathering_state: int = -1
+var _candidates_sent: Dictionary[String, int] = {}
+var _candidates_received: Dictionary[String, int] = {}
 
 
 func _ready() -> void:
@@ -98,6 +104,20 @@ func _ready() -> void:
 
 static func describe(reason: String) -> String:
 	return REASONS.get(reason, "Connection error (%s)." % reason)
+
+
+## Summarises an ICE candidate line without its address, e.g. "host udp mdns"
+## or "srflx udp ipv4". Types: host (the device's own address), srflx (its
+## public address as seen by STUN), relay (a TURN server), prflx (learned
+## while checking). mdns means the browser hid the local IP behind a .local name.
+static func describe_candidate(candidate: String) -> String:
+	var parts: PackedStringArray = candidate.strip_edges().split(" ", false)
+	var typ_at: int = parts.find("typ")
+	if parts.size() < 6 or typ_at < 0 or typ_at + 1 >= parts.size():
+		return "unknown"
+	var address: String = parts[4]
+	var family: String = "mdns" if address.ends_with(".local") else ("ipv6" if address.contains(":") else "ipv4")
+	return "%s %s %s" % [parts[typ_at + 1], parts[2].to_lower(), family]
 
 
 ## The signalling Worker's base URL. Uses get_setting_with_override so feature
@@ -166,13 +186,28 @@ func _watch_rtc_state() -> void:
 	# Only logs changes, and fails a connection attempt if ICE fails.
 	if _connection == null:
 		return
+	_watch_gathering_state()
 	var rtc_state: int = _connection.get_connection_state()
 	if rtc_state == _last_rtc_state:
 		return
 	_last_rtc_state = rtc_state
-	_log("WebRTC: " + _rtc_state_name(rtc_state))
+	_rtc_log("WebRTC: " + _rtc_state_name(rtc_state))
 	if rtc_state == WebRTCPeerConnection.STATE_FAILED and state == State.CONNECTING:
 		_fail("ice_failed")
+
+
+func _watch_gathering_state() -> void:
+	var gathering: int = _connection.get_gathering_state()
+	if gathering == _last_gathering_state:
+		return
+	_last_gathering_state = gathering
+	if gathering == WebRTCPeerConnection.GATHERING_STATE_GATHERING:
+		_rtc_log("Finding our addresses")
+	elif gathering == WebRTCPeerConnection.GATHERING_STATE_COMPLETE:
+		_rtc_log("Finished finding our addresses")
+		# STUN asks a server outside the network for our public address over UDP.
+		if not _has_type(_candidates_sent, "srflx"):
+			_rtc_log("No public address from STUN: outbound UDP may be blocked")
 
 
 # --- Signalling -------------------------------------------------------------
@@ -205,20 +240,21 @@ func _on_signal_peer_left() -> void:
 
 func _on_offer_received(sdp: String) -> void:
 	if _connection != null and not is_host:
-		_log("Got offer")
+		_rtc_log("Got offer")
 		_connection.set_remote_description("offer", sdp)
 		_wait_on_network()
 
 
 func _on_answer_received(sdp: String) -> void:
 	if _connection != null and is_host:
-		_log("Got answer")
+		_rtc_log("Got answer")
 		_connection.set_remote_description("answer", sdp)
 		_wait_on_network()
 
 
 func _on_ice_received(media: String, index: int, candidate: String) -> void:
 	if _connection != null:
+		_count_candidate(_candidates_received, "Got", candidate)
 		_connection.add_ice_candidate(media, index, candidate)
 
 
@@ -231,6 +267,7 @@ func _on_signalling_closed(reason: String) -> void:
 
 func _start_rtc() -> void:
 	_set_state(State.CONNECTING)
+	_rtc_started_msec = Time.get_ticks_msec()
 	# Host waits for the answer, guest for the offer.
 	_wait_on_peer()
 	_rtc_peer = WebRTCMultiplayerPeer.new()
@@ -254,19 +291,21 @@ func _start_rtc() -> void:
 func _on_session_description_created(type: String, sdp: String) -> void:
 	_connection.set_local_description(type, sdp)
 	if type == "offer":
-		_log("Sending offer")
+		_rtc_log("Sending offer")
 		_signalling.send_offer(sdp)
 	else:
-		_log("Sending answer")
+		_rtc_log("Sending answer")
 		_signalling.send_answer(sdp)
 
 
 func _on_ice_candidate_created(media: String, index: int, candidate: String) -> void:
+	_count_candidate(_candidates_sent, "Sent", candidate)
 	_signalling.send_ice(media, index, candidate)
 
 
 func _on_peer_connected(_id: int) -> void:
-	_log("Peer-to-peer link is up")
+	_rtc_log("Peer-to-peer link is up")
+	_log_candidate_summary()
 	# Keep a timeout running until the opponent's HELLO arrives.
 	_wait_on_peer()
 	_signalling.close()
@@ -337,6 +376,8 @@ func _wait_on_network() -> void:
 
 func _fail(reason: String) -> void:
 	_log("Failed: " + reason)
+	if _connection != null:
+		_log_candidate_summary()
 	_reset()
 	connection_failed.emit(reason)
 
@@ -351,6 +392,9 @@ func _reset() -> void:
 	_rtc_peer = null
 	_connection = null
 	_last_rtc_state = -1
+	_last_gathering_state = -1
+	_candidates_sent.clear()
+	_candidates_received.clear()
 	_set_link_status(LinkWatch.Status.OK)
 	opponent = null
 	room_code = ""
@@ -377,6 +421,38 @@ func _set_link_status(status: LinkWatch.Status) -> void:
 func _log(text: String) -> void:
 	print("[Net] ", text)
 	log_line.emit(text)
+
+
+## Logs a connection step with the time since _start_rtc, e.g. "[+1.4 s] Got answer".
+func _rtc_log(text: String) -> void:
+	_log("[+%.1f s] %s" % [(Time.get_ticks_msec() - _rtc_started_msec) / 1000.0, text])
+
+
+func _count_candidate(counts: Dictionary[String, int], verb: String, candidate: String) -> void:
+	var kind: String = describe_candidate(candidate)
+	counts[kind] = counts.get(kind, 0) + 1
+	_rtc_log("%s address: %s" % [verb, kind])
+
+
+func _log_candidate_summary() -> void:
+	_log("Addresses sent: " + _format_counts(_candidates_sent))
+	_log("Addresses got: " + _format_counts(_candidates_received))
+
+
+static func _format_counts(counts: Dictionary[String, int]) -> String:
+	if counts.is_empty():
+		return "none"
+	var items: PackedStringArray = []
+	for kind: String in counts:
+		items.append("%s x%d" % [kind, counts[kind]])
+	return ", ".join(items)
+
+
+static func _has_type(counts: Dictionary[String, int], type: String) -> bool:
+	for kind: String in counts:
+		if kind.begins_with(type + " "):
+			return true
+	return false
 
 
 static func _rtc_state_name(rtc_state: int) -> String:
