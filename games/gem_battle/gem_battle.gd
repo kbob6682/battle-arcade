@@ -24,7 +24,7 @@ const SNAPSHOT_INTERVAL_SEC: float = 0.25
 const SWAP_MODE: String = "Swap"
 ## Size of one cell in the Swap mode next-row preview.
 const ROW_PREVIEW_CELL: float = 24.0
-const DROP_HELP: String = "Arrows or WASD: move, Up/W rotate, Down/S soft drop. Z/X rotate either way. Space hard drop."
+const DROP_HELP: String = "Arrows or WASD: move, Up/W rotate, Down/S soft drop. Z/X or left/right click rotate either way. Space hard drop."
 const SWAP_HELP: String = "Drag a gem onto a neighbour to swap. Only swaps that make a match work. Keys: arrows/WASD move, hold Space + arrow to swap."
 
 var _game: GemModeGame = null

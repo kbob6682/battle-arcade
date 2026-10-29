@@ -162,8 +162,24 @@ func test_arrows_and_wasd_both_work() -> void:
 	for action: String in expected:
 		var keys: Array = []
 		for event: InputEvent in InputMap.action_get_events(action):
-			keys.append((event as InputEventKey).physical_keycode)
+			if event is InputEventKey:
+				keys.append((event as InputEventKey).physical_keycode)
 		check_eq(keys, expected[action], action)
+
+
+func test_mouse_buttons_rotate() -> void:
+	# Left click turns the pair left (anticlockwise), right click turns it right.
+	var expected: Dictionary = {"gem_rotate_ccw": MOUSE_BUTTON_LEFT, "gem_rotate_cw": MOUSE_BUTTON_RIGHT}
+	for action: String in expected:
+		var buttons: Array = []
+		for event: InputEvent in InputMap.action_get_events(action):
+			if event is InputEventMouseButton:
+				buttons.append((event as InputEventMouseButton).button_index)
+		check_eq(buttons, [expected[action]], action)
+		var click := InputEventMouseButton.new()
+		click.button_index = expected[action]
+		click.pressed = true
+		check(click.is_action_pressed(action), "%s matches a click" % action)
 
 
 func test_a_chain_blocks_incoming_junk_first() -> void:
